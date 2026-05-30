@@ -515,6 +515,18 @@ body {
   opacity: 0.8;
 }
 
+.ping-count {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ping-icon {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
 .hub-status {
   font-size: 13px;
   line-height: 1.4;

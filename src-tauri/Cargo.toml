@@ -70,6 +70,7 @@ hickory-resolver = "0.26"
 specta = "=2.0.0-rc.22"
 specta-typescript = "0.0.9"
 tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
+ping = "0.7.1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55.0"

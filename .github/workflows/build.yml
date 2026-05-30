@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+env:
+  WEBVIEW2_FIXED_VERSION: "148.0.3967.96"
+
 jobs:
   build-cm:
     name: Build CM-SS13 Launcher
@@ -78,6 +81,19 @@ jobs:
           cp src-tauri/winetricks "/tmp/lib/SS13 Launcher/"
           cp src-tauri/cabextract "/tmp/lib/SS13 Launcher/"
           chmod +x "/tmp/lib/SS13 Launcher/winetricks" "/tmp/lib/SS13 Launcher/cabextract"
+
+      - name: Cache WebView2 Fixed Runtime
+        if: matrix.platform == 'windows-latest'
+        id: cache-webview2
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/webview2-runtime
+          key: webview2-fixed-${{ env.WEBVIEW2_FIXED_VERSION }}
+
+      - name: Download WebView2 Fixed Runtime
+        if: matrix.platform == 'windows-latest' && steps.cache-webview2.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: ./scripts/download-webview2.ps1
 
       - name: install frontend dependencies
         run: npm install
@@ -186,6 +202,19 @@ jobs:
           cp src-tauri/winetricks "/tmp/lib/SS13 Launcher/"
           cp src-tauri/cabextract "/tmp/lib/SS13 Launcher/"
           chmod +x "/tmp/lib/SS13 Launcher/winetricks" "/tmp/lib/SS13 Launcher/cabextract"
+
+      - name: Cache WebView2 Fixed Runtime
+        if: matrix.platform == 'windows-latest'
+        id: cache-webview2
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/webview2-runtime
+          key: webview2-fixed-${{ env.WEBVIEW2_FIXED_VERSION }}
+
+      - name: Download WebView2 Fixed Runtime
+        if: matrix.platform == 'windows-latest' && steps.cache-webview2.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: ./scripts/download-webview2.ps1
 
       - name: install frontend dependencies
         run: npm install

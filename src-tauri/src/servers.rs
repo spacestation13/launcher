@@ -413,7 +413,11 @@ async fn fetch_servers_internal() -> CommandResult<Vec<Server>> {
 }
 
 /// Fetch servers and populate the cache. Called during app setup.
-pub async fn init_servers(state: &Arc<ServerState>) {
+pub async fn init_servers(
+    state: &Arc<ServerState>,
+    ping_state: &Arc<crate::server_ping::ServerPingState>,
+    handle: &AppHandle,
+) {
     match fetch_servers_internal().await {
         Ok(servers) => {
             let mut previous_states = state.previous_states.write().await;
@@ -430,8 +434,10 @@ pub async fn init_servers(state: &Arc<ServerState>) {
             }
             drop(previous_states);
 
-            *state.servers.write().await = servers;
+            *state.servers.write().await = servers.clone();
             tracing::info!("Initial server fetch complete");
+
+            crate::server_ping::ping_servers(handle, ping_state, &servers).await;
         }
         Err(e) => {
             tracing::error!("Initial server fetch failed: {}", e);
@@ -445,7 +451,11 @@ pub async fn get_servers(state: tauri::State<'_, Arc<ServerState>>) -> CommandRe
     Ok(state.servers.read().await.clone())
 }
 
-pub async fn server_fetch_background_task(handle: AppHandle, state: Arc<ServerState>) {
+pub async fn server_fetch_background_task(
+    handle: AppHandle,
+    state: Arc<ServerState>,
+    ping_state: Arc<crate::server_ping::ServerPingState>,
+) {
     loop {
         tokio::time::sleep(Duration::from_secs(SERVER_FETCH_INTERVAL_SECS)).await;
 
@@ -454,7 +464,9 @@ pub async fn server_fetch_background_task(handle: AppHandle, state: Arc<ServerSt
                 check_and_send_notifications(&handle, &state, &servers).await;
 
                 *state.servers.write().await = servers.clone();
-                let _ = handle.emit("servers-updated", ServerUpdateEvent { servers });
+                let _ = handle.emit("servers-updated", ServerUpdateEvent { servers: servers.clone() });
+
+                crate::server_ping::ping_servers(&handle, &ping_state, &servers).await;
             }
             Err(error) => {
                 tracing::error!("Server fetch error: {}", error);

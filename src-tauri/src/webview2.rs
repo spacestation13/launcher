@@ -1,5 +1,31 @@
 #[cfg(target_os = "windows")]
+pub fn get_fixed_runtime_path() -> Option<std::path::PathBuf> {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))?;
+
+    let runtime_path = exe_dir.join("webview2-runtime");
+    if runtime_path.exists() {
+        return Some(runtime_path);
+    }
+
+    None
+}
+
+#[cfg(target_os = "windows")]
+pub fn setup_fixed_webview2() {
+    if let Some(path) = get_fixed_runtime_path() {
+        tracing::info!("Using fixed WebView2 runtime at {:?}", path);
+        std::env::set_var("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER", &path);
+    }
+}
+
+#[cfg(target_os = "windows")]
 pub fn check_webview2_installed() -> bool {
+    if get_fixed_runtime_path().is_some() {
+        return true;
+    }
+
     use winreg::enums::*;
     use winreg::RegKey;
 

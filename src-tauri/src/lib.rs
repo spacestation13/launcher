@@ -12,6 +12,7 @@ mod logging;
 mod open_url;
 mod presence;
 mod relays;
+mod server_ping;
 mod servers;
 mod settings;
 mod singleplayer;
@@ -43,6 +44,7 @@ use byond_login::{
     start_byond_login, ByondSessionState,
 };
 use relays::{get_relays, get_selected_relay, set_selected_relay};
+use server_ping::get_server_pings;
 use servers::get_servers;
 use settings::{
     get_settings, save_filter_settings, set_age_verified, set_auth_mode, set_last_played_server,
@@ -200,6 +202,7 @@ pub fn build_specta() -> tauri_specta::Builder<tauri::Wry> {
         get_control_server_port,
         kill_game,
         get_servers,
+        get_server_pings,
         get_relays,
         get_selected_relay,
         set_selected_relay,
@@ -265,6 +268,7 @@ pub fn build_specta() -> tauri_specta::Builder<tauri::Wry> {
         get_control_server_port,
         kill_game,
         get_servers,
+        get_server_pings,
         get_relays,
         get_selected_relay,
         set_selected_relay,
@@ -324,6 +328,8 @@ pub fn run() {
         if let Err(e) = job_object::init_job_object() {
             tracing::error!("Failed to initialize job object: {}", e);
         }
+
+        webview2::setup_fixed_webview2();
 
         if !webview2::check_webview2_installed() {
             webview2::show_webview2_error();
@@ -422,6 +428,7 @@ pub fn run() {
     let presence_manager = std::sync::Arc::new(manager);
     let server_state = std::sync::Arc::new(servers::ServerState::new());
     let relay_state = std::sync::Arc::new(relays::RelayState::new());
+    let server_ping_state = std::sync::Arc::new(server_ping::ServerPingState::new());
 
     let byond_session_state = ByondSessionState::new();
 
@@ -429,6 +436,7 @@ pub fn run() {
         .manage(std::sync::Arc::clone(&presence_manager))
         .manage(std::sync::Arc::clone(&server_state))
         .manage(std::sync::Arc::clone(&relay_state))
+        .manage(std::sync::Arc::clone(&server_ping_state))
         .manage(byond_session_state);
 
     #[allow(clippy::expect_used)] // Main entry point - no recovery possible
@@ -468,15 +476,19 @@ pub fn run() {
 
             let server_state =
                 std::sync::Arc::clone(app.state::<std::sync::Arc<servers::ServerState>>().inner());
+            let ping_state =
+                std::sync::Arc::clone(app.state::<std::sync::Arc<server_ping::ServerPingState>>().inner());
 
             let server_state_init = std::sync::Arc::clone(&server_state);
+            let ping_state_init = std::sync::Arc::clone(&ping_state);
+            let handle_for_init = handle.clone();
             tauri::async_runtime::block_on(async {
-                servers::init_servers(&server_state_init).await;
+                servers::init_servers(&server_state_init, &ping_state_init, &handle_for_init).await;
             });
 
             let handle_for_server_task = handle.clone();
             tauri::async_runtime::spawn(async move {
-                servers::server_fetch_background_task(handle_for_server_task, server_state).await;
+                servers::server_fetch_background_task(handle_for_server_task, server_state, ping_state).await;
             });
 
             let relay_state =

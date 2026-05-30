@@ -60,8 +60,8 @@
       },
       "wix": null,
       "webviewInstallMode": {
-        "silent": true,
-        "type": "embedBootstrapper"
+        "type": "fixedRuntime",
+        "path": "webview2-runtime"
       }
     },
     "active": true,

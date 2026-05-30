@@ -12,6 +12,7 @@ import {
   faComments,
   faGlobe,
   faShield,
+  faSignal,
   faStar,
   faUsers,
 } from "@fortawesome/free-solid-svg-icons";
@@ -60,6 +61,7 @@ export const ServerItem = ({
   );
 
   const config = useConfigStore((s) => s.config);
+  const ping = useServerStore((s) => s.pings[server.url] ?? null);
   const relaysReady = useServerStore((s) => s.relaysReady);
   const notificationsEnabled = useSettingsStore((s) =>
     s.notificationServers.has(server.name),
@@ -294,6 +296,22 @@ export const ServerItem = ({
                 <div className="admin-count">
                   <FontAwesomeIcon icon={faShield} className="admin-icon" />
                   {data.admins}
+                </div>
+              )}
+              {isOnline && ping != null && (
+                <div
+                  className="ping-count"
+                  style={{
+                    color:
+                      ping < 80
+                        ? "#4ade80"
+                        : ping < 200
+                          ? "#facc15"
+                          : "#f87171",
+                  }}
+                >
+                  <FontAwesomeIcon icon={faSignal} className="ping-icon" />
+                  {ping}ms
                 </div>
               )}
             </div>

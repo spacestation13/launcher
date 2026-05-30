@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 
 resources/
+src-tauri/webview2-runtime/

@@ -285,6 +285,14 @@ async getServers() : Promise<Result<Server[], CommandError>> {
     else return { status: "error", error: e  as any };
 }
 },
+async getServerPings() : Promise<Result<Partial<{ [key in string]: number | null }>, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_server_pings") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async getRelays() : Promise<Result<RelayWithPing[], CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_relays") };

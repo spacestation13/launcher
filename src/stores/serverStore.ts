@@ -12,6 +12,12 @@ interface ServerErrorEvent {
   error: string;
 }
 
+type PingMap = Partial<Record<string, number | null>>;
+
+interface ServerPingUpdate {
+  pings: PingMap;
+}
+
 interface ServerStore {
   servers: Server[];
   loading: boolean;
@@ -20,6 +26,7 @@ interface ServerStore {
   selectedRelay: string;
   relaysReady: boolean;
   lastUpdated: number | null;
+  pings: PingMap;
 
   setSelectedRelay: (id: string) => void;
   initListener: () => Promise<UnlistenFn>;
@@ -38,6 +45,7 @@ export const useServerStore = create<ServerStore>()((set) => ({
   selectedRelay: "",
   relaysReady: false,
   lastUpdated: null,
+  pings: {},
 
   setSelectedRelay: async (selectedRelay) => {
     set({ selectedRelay });
@@ -68,9 +76,24 @@ export const useServerStore = create<ServerStore>()((set) => ({
       }
     );
 
+    try {
+      const pings = unwrap(await commands.getServerPings());
+      set({ pings });
+    } catch (err) {
+      console.error("Failed to get initial pings:", err);
+    }
+
+    const unlistenPings = await listen<ServerPingUpdate>(
+      "server-pings-updated",
+      (event) => {
+        set({ pings: event.payload.pings });
+      }
+    );
+
     return () => {
       unlistenUpdate();
       unlistenError();
+      unlistenPings();
     };
   },
 

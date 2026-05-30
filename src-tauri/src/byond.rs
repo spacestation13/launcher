@@ -1536,10 +1536,13 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
             #[cfg(target_os = "windows")]
             let mut pager_child = {
                 let byond_pager_path = get_byond_pager_path(&app, &version)?;
-                Command::new(&byond_pager_path)
-                    .arg(&connect_url)
-                    .env("WEBVIEW2_USER_DATA_FOLDER", &webview2_data_dir)
-                    .spawn()?
+                let mut cmd = Command::new(&byond_pager_path);
+                cmd.arg(&connect_url)
+                    .env("WEBVIEW2_USER_DATA_FOLDER", &webview2_data_dir);
+                if let Some(path) = crate::webview2::get_fixed_runtime_path() {
+                    cmd.env("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER", path);
+                }
+                cmd.spawn()?
             };
 
             #[cfg(target_os = "linux")]
@@ -1605,10 +1608,15 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
             );
 
             #[cfg(target_os = "windows")]
-            let child = Command::new(&dreamseeker_path)
-                .arg(&connect_url)
-                .env("WEBVIEW2_USER_DATA_FOLDER", &webview2_data_dir)
-                .spawn()?;
+            let child = {
+                let mut cmd = Command::new(&dreamseeker_path);
+                cmd.arg(&connect_url)
+                    .env("WEBVIEW2_USER_DATA_FOLDER", &webview2_data_dir);
+                if let Some(path) = crate::webview2::get_fixed_runtime_path() {
+                    cmd.env("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER", path);
+                }
+                cmd.spawn()?
+            };
 
             #[cfg(target_os = "linux")]
             let child = wine::launch_with_wine(
