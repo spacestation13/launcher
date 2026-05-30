@@ -157,6 +157,7 @@ jobs:
           cp src-tauri/winetricks "/tmp/lib/CM-SS13 Launcher/"
           cp src-tauri/cabextract "/tmp/lib/CM-SS13 Launcher/"
           chmod +x "/tmp/lib/CM-SS13 Launcher/winetricks" "/tmp/lib/CM-SS13 Launcher/cabextract"
+          mkdir -p src-tauri/webview2-runtime
 
       - name: Cache Steamworks SDK
         id: cache-steamworks

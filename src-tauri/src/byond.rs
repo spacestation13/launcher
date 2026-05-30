@@ -59,6 +59,7 @@ impl AccessMethod {
 
     fn should_exchange_hub_ticket(&self) -> bool {
         matches!(self, Self::SessionToken { .. })
+            && crate::config::get_config().urls.hub_api.is_some()
     }
 }
 
