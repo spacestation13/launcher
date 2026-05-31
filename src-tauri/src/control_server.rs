@@ -304,23 +304,28 @@ impl ControlServer {
                 continue;
             }
 
-            // Validate the Launcher-Key header
-            let provided_key = request
-                .headers()
-                .iter()
-                .find(|h| h.field.as_str() == "Launcher-Key" || h.field.as_str() == "launcher-key")
-                .map(|h| h.value.as_str().to_owned());
+            let config = crate::config::get_config();
+            if config.features.control_server_key {
+                let provided_key = request
+                    .headers()
+                    .iter()
+                    .find(|h| {
+                        h.field.as_str() == "Launcher-Key" || h.field.as_str() == "launcher-key"
+                    })
+                    .map(|h| h.value.as_str().to_owned());
 
-            let expected_key = launcher_key.lock().unwrap().clone();
-            match provided_key {
-                Some(ref key) if key == &expected_key => {}
-                _ => {
-                    tracing::warn!(
-                        "Control server request rejected: invalid or missing Launcher-Key"
-                    );
-                    let response = json_response(403, serde_json::json!({"error": "Forbidden"}));
-                    request.respond(response).ok();
-                    continue;
+                let expected_key = launcher_key.lock().unwrap().clone();
+                match provided_key {
+                    Some(ref key) if key == &expected_key => {}
+                    _ => {
+                        tracing::warn!(
+                            "Control server request rejected: invalid or missing Launcher-Key"
+                        );
+                        let response =
+                            json_response(403, serde_json::json!({"error": "Forbidden"}));
+                        request.respond(response).ok();
+                        continue;
+                    }
                 }
             }
 

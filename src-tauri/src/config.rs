@@ -42,6 +42,7 @@ pub struct LauncherFeatures {
     pub connect_logo: bool,
     pub favorites: bool,
     pub direct_connect: bool,
+    pub control_server_key: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, specta::Type)]
@@ -108,6 +109,7 @@ pub fn get_config() -> LauncherConfig {
             connect_logo: false,
             favorites: false,
             direct_connect: false,
+            control_server_key: false,
         },
         urls: LauncherUrls {
             server_api: "https://db.cm-ss13.com/api/Round",
@@ -183,6 +185,7 @@ pub fn get_config() -> LauncherConfig {
             connect_logo: true,
             favorites: true,
             direct_connect: true,
+            control_server_key: true,
         },
         urls: LauncherUrls {
             server_api: "https://api.zewaka.webcam/api/servers",
