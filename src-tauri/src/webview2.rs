@@ -17,6 +17,15 @@ pub fn get_fixed_runtime_path() -> Option<std::path::PathBuf> {
         }
     }
 
+    // Dev builds: exe is at src-tauri/target/{debug,release}/, runtime is at src-tauri/
+    #[cfg(debug_assertions)]
+    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        let runtime_path = std::path::PathBuf::from(manifest_dir).join("webview2-runtime");
+        if runtime_path.exists() {
+            return Some(runtime_path);
+        }
+    }
+
     tracing::warn!(
         "WebView2 fixed runtime not found (exe={:?}, checked {:?} and parent)",
         exe,
