@@ -1,13 +1,13 @@
 > [!IMPORTANT]  
 > Install directly from GitHub Actions here:
 >
-> <a href="https://github.com/cmss13-devs/cm-launcher/releases/latest/download/CM-SS13.Launcher_0.5.0_x64-setup.exe">
+> <a href="https://github.com/cmss13-devs/launcher/releases/tag/v0.19.6">
 >  <img src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows download link"/>
 > </a>
 
-# CM Launcher ![Steam Build](https://img.shields.io/github/actions/workflow/status/cmss13-devs/cm-launcher/steam.yml?style=for-the-badge&label=STEAM%20BUILD) ![GitHub Build](https://img.shields.io/github/actions/workflow/status/cmss13-devs/cm-launcher/build.yml?style=for-the-badge&label=GITHUB%20BUILD) ![Tests](https://img.shields.io/github/actions/workflow/status/cmss13-devs/cm-launcher/build.yml?style=for-the-badge&label=TESTS)
+# SS13 Launcher ![Steam Build](https://img.shields.io/github/actions/workflow/status/cmss13-devs/cm-launcher/steam.yml?style=for-the-badge&label=STEAM%20BUILD) ![GitHub Build](https://img.shields.io/github/actions/workflow/status/cmss13-devs/cm-launcher/build.yml?style=for-the-badge&label=GITHUB%20BUILD) ![Tests](https://img.shields.io/github/actions/workflow/status/cmss13-devs/cm-launcher/build.yml?style=for-the-badge&label=TESTS)
 
-A rewrite of the DreamMaker backed CMLauncher, using [Tauri](https://v2.tauri.app/) and managing BYOND versions internally.
+A launcher for Space Station 13 servers, using [Tauri](https://v2.tauri.app/) and managing BYOND versions internally.
 
 ## Screenshots
 
@@ -63,14 +63,3 @@ Manually download the `.msi` and `.exe` and upload these to [Microsoft](https://
 ### To-Do
 
 See issues tagged with https://github.com/cmss13-devs/cm-launcher/labels/feature-request or https://github.com/cmss13-devs/cm-launcher/labels/bug as an easy place to start contributing.
-
-## Code Signing Policy
-
-### Team Roles
-
-- **Committers and reviewers:** [Launcher Reviewer group members](https://github.com/orgs/cmss13-devs/teams/launcher-reviewers)
-- **Approvers:** [Launcher Approver group members](https://github.com/orgs/cmss13-devs/teams/launcher-approvers)
-
-### Privacy Policy
-
-You can access the CM-SS13 Terms of Service at https://cm-ss13.com/tos.
