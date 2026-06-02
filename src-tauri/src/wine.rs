@@ -24,7 +24,7 @@ const MIN_WINE_VERSION: (u32, u32) = (10, 5);
 const INIT_MARKER_FILE: &str = ".cm_launcher_initialized";
 
 /// Current initialization version - bump this to force re-initialization
-const INIT_VERSION: u32 = 3;
+const INIT_VERSION: u32 = 4;
 
 /// Resource names for bundled Wine
 const WINE_ARCHIVE_RESOURCE: &str = "wine.tar.zst";
@@ -668,6 +668,32 @@ fn run_winetricks_with_paths(
     Ok(())
 }
 
+/// Set a registry key in the Wine prefix
+fn set_registry_key(
+    paths: &WinePaths,
+    prefix: &Path,
+    path: &str,
+    key: &str,
+    value: &str,
+    reg_type: &str,
+) -> Result<(), WineError> {
+    let mut cmd = Command::new(&paths.wine);
+    cmd.args(["reg", "add", path, "/v", key, "/t", reg_type, "/d", value, "/f"]);
+    cmd.env("WINEPREFIX", prefix);
+    for (k, v) in paths.get_env_vars() {
+        cmd.env(k, v);
+    }
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+    let output = cmd.output()?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(WineError::Other(format!("Failed to set registry key {}\\{}: {}", path, key, stderr)));
+    }
+    tracing::info!("Set registry key: {}\\{} = {}", path, key, value);
+    Ok(())
+}
+
 /// Initialize the Wine prefix with all required dependencies
 pub async fn initialize_prefix(
     app: &AppHandle,
@@ -742,6 +768,15 @@ pub async fn initialize_prefix(
         );
         run_winetricks_with_paths(&paths, &prefix, verb)?;
     }
+
+    set_registry_key(
+        &paths,
+        &prefix,
+        "HKEY_CURRENT_USER\\Software\\Wine\\AppDefaults\\msedgewebview2.exe",
+        "version",
+        "win7",
+        "REG_SZ",
+    )?;
 
     let marker_path = prefix.join(INIT_MARKER_FILE);
     fs::write(&marker_path, INIT_VERSION.to_string())?;

@@ -1552,7 +1552,7 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
                 let exe_path = version_dir.join("byond").join("bin").join("byond.exe");
                 let mut env_vars: Vec<(&str, String)> = vec![(
                     "WEBVIEW2_USER_DATA_FOLDER",
-                    webview2_data_dir.to_str().unwrap().to_string(),
+                    wine::unix_to_wine_path(&webview2_data_dir),
                 )];
                 if let Some(path) = crate::webview2::get_fixed_runtime_path() {
                     let wine_path = wine::unix_to_wine_path(&path);
@@ -1563,7 +1563,7 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
                     ));
                     env_vars.push((
                         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-                        "--no-sandbox --enable-logging --v=1".to_string(),
+                        "--disable-direct-composition --no-sandbox --enable-logging --log-file=Z:\\\\tmp\\\\webview2.log --v=1".to_string(),
                     ));
                 }
                 let env_refs: Vec<(&str, &str)> =
@@ -1635,7 +1635,7 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
             let child = {
                 let mut env_vars: Vec<(&str, String)> = vec![(
                     "WEBVIEW2_USER_DATA_FOLDER",
-                    webview2_data_dir.to_str().unwrap().to_string(),
+                    wine::unix_to_wine_path(&webview2_data_dir),
                 )];
                 if let Some(path) = crate::webview2::get_fixed_runtime_path() {
                     let wine_path = wine::unix_to_wine_path(&path);
@@ -1646,7 +1646,7 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
                     ));
                     env_vars.push((
                         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-                        "--no-sandbox --enable-logging --v=1".to_string(),
+                        "--disable-direct-composition --no-sandbox --enable-logging --log-file=Z:\\\\tmp\\\\webview2.log --v=1".to_string(),
                     ));
                 }
                 let env_refs: Vec<(&str, &str)> =
