@@ -74,12 +74,19 @@ pub struct Server {
     pub language: Option<String>,
     #[serde(default)]
     pub whitelisted: Option<Whitelisted>,
+    #[serde(default)]
+    pub terms_of_service: Option<TermsOfService>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Whitelisted {
     description: Option<String>,
     link: Option<ServerLink>,
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct TermsOfService {
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -108,6 +115,8 @@ struct HubServer {
     verified_domain: Option<String>,
     #[serde(default)]
     whitelisted: Option<Whitelisted>,
+    #[serde(default)]
+    terms_of_service: Option<TermsOfService>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -263,6 +272,7 @@ impl HubApi {
             region,
             language,
             whitelisted: hub.whitelisted,
+            terms_of_service: hub.terms_of_service,
         }
     }
 }
@@ -362,6 +372,7 @@ impl CmApi {
             region: None,
             language: None,
             whitelisted: None,
+            terms_of_service: None,
         }
     }
 }

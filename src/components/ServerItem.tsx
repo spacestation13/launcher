@@ -28,6 +28,7 @@ import { useConfigStore, useServerStore, useSettingsStore } from "../stores";
 import type { Server } from "../bindings";
 import { formatDuration } from "../utils";
 import { Modal, ModalContent } from "./Modal";
+import { TermsOfServiceModal } from "./TermsOfServiceModal";
 import { WhitelistRequiredModal } from "./WhitelistRequired";
 
 export const LinkIconMap: Record<string, IconDefinition> = {
@@ -55,8 +56,9 @@ export const ServerItem = ({
   const [infoOpen, setInfoOpen] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [whitelistRequired, setWhitelistedRequired] = useState(false);
+  const [tosRequired, setTosRequired] = useState(false);
 
-  const { whitelistedServers } = useSettingsStore()
+  const { whitelistedServers, acceptedTosServers } = useSettingsStore()
   const { showError } = useError();
   const { connect } = useConnect();
 
@@ -138,6 +140,7 @@ export const ServerItem = ({
           : undefined;
 
   const notWhitelisted = server.whitelisted && server.id && !whitelistedServers.has(server.id);
+  const needsTosAccept = server.terms_of_service && server.id && !acceptedTosServers.has(server.id);
 
   return (
     <>
@@ -177,6 +180,19 @@ export const ServerItem = ({
         visible={whitelistRequired}
         server={server}
         onClose={() => setWhitelistedRequired(false)}
+        onJoin={() => {
+          if (needsTosAccept) {
+            setTosRequired(true);
+          } else {
+            handleConnect();
+          }
+        }}
+        linkClick={setPendingUrl}
+      />
+      <TermsOfServiceModal
+        visible={tosRequired}
+        server={server}
+        onClose={() => setTosRequired(false)}
         onJoin={handleConnect}
         linkClick={setPendingUrl}
       />
@@ -373,7 +389,7 @@ export const ServerItem = ({
               <button
                 type="button"
                 className={`button connect-button ${notWhitelisted ? "whitelisted-button" : ""}`}
-                onClick={notWhitelisted ? () => setWhitelistedRequired(true) : handleConnect}
+                onClick={notWhitelisted ? () => setWhitelistedRequired(true) : needsTosAccept ? () => setTosRequired(true) : handleConnect}
                 disabled={!canConnect || connecting || autoConnecting}
               >
                 {connecting || autoConnecting ? (

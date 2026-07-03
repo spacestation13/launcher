@@ -18,7 +18,9 @@
     "join": "Join",
     "apply": "Apply",
     "tryAgain": "Try Again",
-    "createAccount": "Create Account"
+    "createAccount": "Create Account",
+    "accept": "Accept",
+    "decline": "Decline"
   },
   "errors": {
     "network": "Network error: {{detail}}",
@@ -141,7 +143,12 @@
     "disableNotifications": "Disable restart notifications",
     "favorite": "Add to favorites",
     "unfavorite": "Remove from favorites",
-    "regions": "Regions"
+    "regions": "Regions",
+    "whitelistRequired": "Whitelist Required",
+    "whitelistPrompt": "This server requires you to be whitelisted before joining.",
+    "whitelistConfirm": "I am whitelisted on this server.",
+    "tosRequired": "This server requires you to accept their terms of service before joining.",
+    "tosViewLink": "Terms of Service"
   },
   "nav": {
     "home": "Home",

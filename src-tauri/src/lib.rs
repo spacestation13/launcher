@@ -49,8 +49,8 @@ use servers::get_servers;
 use settings::{
     get_settings, save_filter_settings, set_age_verified, set_auth_mode, set_last_played_server,
     set_last_view_mode, set_locale, set_rendering_pipeline, set_rich_presence, set_theme,
-    set_whitelisted_server, toggle_favorite_server, toggle_server_notifications,
-    trust_direct_connect_address,
+    set_accepted_tos_server, set_whitelisted_server, toggle_favorite_server,
+    toggle_server_notifications, trust_direct_connect_address,
 };
 
 use singleplayer::{
@@ -198,6 +198,7 @@ pub fn build_specta() -> tauri_specta::Builder<tauri::Wry> {
         toggle_favorite_server,
         trust_direct_connect_address,
         set_whitelisted_server,
+        set_accepted_tos_server,
         save_filter_settings,
         get_control_server_port,
         kill_game,
@@ -264,6 +265,7 @@ pub fn build_specta() -> tauri_specta::Builder<tauri::Wry> {
         set_last_view_mode,
         toggle_favorite_server,
         set_whitelisted_server,
+        set_accepted_tos_server,
         trust_direct_connect_address,
         save_filter_settings,
         get_control_server_port,

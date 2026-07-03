@@ -77,6 +77,8 @@ pub struct AppSettings {
     pub rich_presence_enabled: bool,
     #[serde(default)]
     pub whitelisted_servers: HashSet<String>,
+    #[serde(default)]
+    pub accepted_tos_servers: HashSet<String>,
 }
 
 fn default_true() -> bool {
@@ -128,6 +130,7 @@ impl Default for AppSettings {
             trusted_direct_connect_addresses: HashSet::new(),
             rich_presence_enabled: true,
             whitelisted_servers: HashSet::new(),
+            accepted_tos_servers: HashSet::new(),
         }
     }
 }
@@ -312,6 +315,25 @@ pub async fn set_whitelisted_server(
         settings.whitelisted_servers.insert(uuid);
     } else {
         settings.whitelisted_servers.remove(&uuid);
+    }
+
+    save_settings(&app, &settings)?;
+    Ok(settings)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn set_accepted_tos_server(
+    app: AppHandle,
+    uuid: String,
+    state: bool,
+) -> CommandResult<AppSettings> {
+    let mut settings = load_settings(&app)?;
+
+    if state {
+        settings.accepted_tos_servers.insert(uuid);
+    } else {
+        settings.accepted_tos_servers.remove(&uuid);
     }
 
     save_settings(&app, &settings)?;

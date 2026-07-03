@@ -27,6 +27,7 @@ interface SettingsStore {
   favoriteServers: Set<string>;
   trustedAddresses: Set<string>;
   whitelistedServers: Set<string>;
+  acceptedTosServers: Set<string>;
   richPresenceEnabled: boolean;
   filters: StoredFilters;
 
@@ -48,6 +49,8 @@ interface SettingsStore {
   isAddressTrusted: (address: string) => boolean;
   setUserWhitelisted: (uuid: string, state: boolean) => Promise<void>;
   isUserWhitelisted: (uuid: string) => boolean;
+  setAcceptedTos: (uuid: string, state: boolean) => Promise<void>;
+  hasAcceptedTos: (uuid: string) => boolean;
   saveRichPresence: (enabled: boolean) => Promise<void>;
   saveFilters: (filters: StoredFilters) => Promise<void>;
 }
@@ -67,6 +70,7 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
   trustedAddresses: new Set<string>(),
   richPresenceEnabled: true,
   whitelistedServers: new Set<string>(),
+  acceptedTosServers: new Set<string>(),
   filters: {
     tags: new Set<string>(),
     show18Plus: false,
@@ -101,6 +105,7 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
         trustedAddresses: new Set(settings.trusted_direct_connect_addresses ?? []),
         richPresenceEnabled: settings.rich_presence_enabled ?? true,
         whitelistedServers: new Set(settings.whitelisted_servers ?? []),
+        acceptedTosServers: new Set(settings.accepted_tos_servers ?? []),
         filters: {
           tags: new Set(settings.filter_tags ?? []),
           show18Plus: settings.filter_show_18_plus ?? false,
@@ -191,6 +196,15 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
 
   isUserWhitelisted: (uuid: string) => {
     return get().whitelistedServers.has(uuid);
+  },
+
+  setAcceptedTos: async (uuid: string, state: boolean) => {
+    const settings = unwrap(await commands.setAcceptedTosServer(uuid, state));
+    set({ acceptedTosServers: new Set(settings.accepted_tos_servers ?? []) });
+  },
+
+  hasAcceptedTos: (uuid: string) => {
+    return get().acceptedTosServers.has(uuid);
   },
 
   saveRichPresence: async (enabled: boolean) => {

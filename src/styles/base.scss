@@ -655,6 +655,7 @@ body {
     background-color: #d0c710;
     color: #1f1a1a;
   }
+
 }
 
 .connect-auth-icon {
@@ -1253,7 +1254,8 @@ body {
     margin: 0;
   }
 
-  .button {
+  .button,
+  .button-secondary {
     margin-top: 8px;
   }
 

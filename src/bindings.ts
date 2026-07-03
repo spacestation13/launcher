@@ -263,6 +263,14 @@ async setWhitelistedServer(uuid: string, state: boolean) : Promise<Result<AppSet
     else return { status: "error", error: e  as any };
 }
 },
+async setAcceptedTosServer(uuid: string, state: boolean) : Promise<Result<AppSettings, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_accepted_tos_server", { uuid, state }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async trustDirectConnectAddress(address: string) : Promise<Result<AppSettings, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("trust_direct_connect_address", { address }) };
@@ -530,7 +538,7 @@ async byondSessionCheckComplete(webId: string | null, username: string | null) :
 
 /** user-defined types **/
 
-export type AppSettings = { auth_mode: AuthMode; theme?: Theme; notification_servers?: string[]; age_verified?: boolean; locale?: string | null; rendering_pipeline?: RenderingPipeline; last_played_server?: string | null; favorite_servers?: string[]; filter_tags?: string[]; filter_show_18_plus?: boolean; filter_show_offline?: boolean | null; filter_show_hub_status?: boolean; filter_regions?: string[]; filter_languages?: string[]; last_view_mode?: string | null; search_query?: string | null; trusted_direct_connect_addresses?: string[]; rich_presence_enabled?: boolean; whitelisted_servers?: string[] }
+export type AppSettings = { auth_mode: AuthMode; theme?: Theme; notification_servers?: string[]; age_verified?: boolean; locale?: string | null; rendering_pipeline?: RenderingPipeline; last_played_server?: string | null; favorite_servers?: string[]; filter_tags?: string[]; filter_show_18_plus?: boolean; filter_show_offline?: boolean | null; filter_show_hub_status?: boolean; filter_regions?: string[]; filter_languages?: string[]; last_view_mode?: string | null; search_query?: string | null; trusted_direct_connect_addresses?: string[]; rich_presence_enabled?: boolean; whitelisted_servers?: string[]; accepted_tos_servers?: string[] }
 export type AuthError = { code: string; message: string; linking_url: string | null }
 export type AuthMode = "oidc" | "hub" | "byond" | "steam"
 export type AuthState = { logged_in: boolean; user: UserInfo | null; loading: boolean; error: string | null }
@@ -554,7 +562,7 @@ export type OidcConfig = { client_id: string; auth_url: string; token_url: strin
 export type RelayWithPing = ({ id: string; name: string; host: string; fallback?: boolean }) & { ping: number | null; checking: boolean }
 export type ReleaseInfo = { tag_name: string; name: string; published_at: string; download_url: string | null; size: number }
 export type RenderingPipeline = "dxvk" | "wined3d"
-export type Server = { id: string | null; name: string; url: string; status: string; hub_status?: string; players?: number; data?: ServerData | null; is_18_plus?: boolean; version?: string | null; engine?: EngineRequirements | null; tags?: string[]; auth_methods?: string[]; engine_type?: string | null; description?: string | null; links?: ServerLink[]; verified_domain?: string | null; region?: string | null; language?: string | null; whitelisted?: Whitelisted | null }
+export type Server = { id: string | null; name: string; url: string; status: string; hub_status?: string; players?: number; data?: ServerData | null; is_18_plus?: boolean; version?: string | null; engine?: EngineRequirements | null; tags?: string[]; auth_methods?: string[]; engine_type?: string | null; description?: string | null; links?: ServerLink[]; verified_domain?: string | null; region?: string | null; language?: string | null; whitelisted?: Whitelisted | null; terms_of_service?: TermsOfService | null }
 export type ServerApiType = "hub_api" | "cm_api"
 export type ServerData = { round_id: number; mode: string; map_name: string; round_duration: number; gamestate: number; players: number; admins?: number | null; popcap?: number | null; security_level?: string | null }
 export type ServerLink = { link: string; type: string }
@@ -564,6 +572,7 @@ export type SocialLink = { name: string; url: string; icon: string }
 export type SteamAuthResult = { success: boolean; user_exists: boolean; access_token: string | null; requires_linking: boolean; linking_url: string | null; error: string | null }
 export type SteamLaunchOptions = { raw: string; server_name: string | null }
 export type SteamUserInfo = { steam_id: string; display_name: string }
+export type TermsOfService = { url: string | null }
 export type Theme = "tgui" | "crt"
 export type UserInfo = { sub: string; name: string | null; preferred_username: string | null; email: string | null; email_verified: boolean | null }
 export type Whitelisted = { description: string | null; link: ServerLink | null }

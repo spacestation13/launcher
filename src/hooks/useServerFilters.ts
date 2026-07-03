@@ -102,6 +102,29 @@ export function useServerFilters(servers: Server[], config: LauncherConfig | nul
     return Array.from(langSet).sort();
   }, [servers]);
 
+  useEffect(() => {
+    const availableTags = new Set(categories);
+    const availableRegions = new Set(regions);
+    const availableLangs = new Set(languages);
+
+    const prunedTags = new Set([...filters.tags].filter((t) => availableTags.has(t)));
+    const prunedRegions = new Set([...filters.regions].filter((r) => availableRegions.has(r)));
+    const prunedLanguages = new Set([...filters.languages].filter((l) => availableLangs.has(l)));
+
+    if (
+      prunedTags.size !== filters.tags.size ||
+      prunedRegions.size !== filters.regions.size ||
+      prunedLanguages.size !== filters.languages.size
+    ) {
+      saveFilters({
+        ...filters,
+        tags: prunedTags,
+        regions: prunedRegions,
+        languages: prunedLanguages,
+      });
+    }
+  }, [categories, regions, languages]);
+
   const hasOffline = useMemo(
     () => servers.some((s) => s.status !== "available"),
     [servers],

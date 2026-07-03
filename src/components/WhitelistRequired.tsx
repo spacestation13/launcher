@@ -43,9 +43,9 @@ export const WhitelistRequiredModal = ({
   };
 
   return (
-    <Modal visible={visible} onClose={onClose} title="Whitelist Required">
+    <Modal visible={visible} onClose={onClose} title={t("servers.whitelistRequired")}>
       <ModalContent>
-        <p>This server requires you to be whitelisted before joining.</p>
+        <p>{t("servers.whitelistPrompt")}</p>
         {server.whitelisted.description && (
           <p className="whitelist-description">{server.whitelisted.description}</p>
         )}
@@ -77,7 +77,7 @@ export const WhitelistRequiredModal = ({
             checked={isWhitelisted}
             onChange={(e) => handleToggle(e.target.checked)}
           />
-          <label htmlFor={id}>I am whitelisted on this server.</label>
+          <label htmlFor={id}>{t("servers.whitelistConfirm")}</label>
         </div>
         <div style={{ marginTop: 12 }}>
           <button
