@@ -23,6 +23,7 @@ dependencies = [
  "hickory-resolver",
  "http2byond",
  "keyring",
+ "launcher-hwid",
  "libc",
  "oauth2",
  "open",
@@ -2174,7 +2175,7 @@ dependencies = [
  "tokio",
  "tower-service",
  "tracing",
- "windows-registry 0.5.3",
+ "windows-registry 0.6.1",
 ]
 
 [[package]]
@@ -2593,6 +2594,10 @@ dependencies = [
  "windows-sys 0.60.2",
  "zeroize",
 ]
+
+[[package]]
+name = "launcher-hwid"
+version = "0.1.0"
 
 [[package]]
 name = "lazy_static"
@@ -6391,7 +6396,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -89,8 +89,7 @@ fn get_session_token() -> Result<AccessMethod, AuthError> {
 }
 
 async fn exchange_hub_ticket(token: &str, server_id: &str) -> Result<AccessMethod, AuthError> {
-    let hwid = crate::control_server::generate_hwid();
-    crate::auth::hub_client::HubClient::join(token, server_id, hwid.as_deref())
+    crate::hwid::exchange_hub_ticket(token, server_id)
         .await
         .map(AccessMethod::HubTicket)
         .map_err(|e| AuthError {

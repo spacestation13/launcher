@@ -508,14 +508,12 @@ impl ControlServer {
     fn handle_status(request: tiny_http::Request, presence_manager: &Arc<PresenceManager>) {
         let is_running = presence_manager.check_game_running();
         let session = presence_manager.get_game_session();
-        let hwid = generate_hwid();
 
         let response = json_response(
             200,
             serde_json::json!({
                 "running": is_running,
                 "server_name": session.as_ref().map(|s| &s.server_name),
-                "hwid": hwid,
             }),
         );
         request.respond(response).ok();
@@ -546,9 +544,7 @@ impl ControlServer {
 
             let server_id = params.server_id.as_deref().ok_or("Server has no hub ID")?;
 
-            let hwid = generate_hwid();
-
-            crate::auth::hub_client::HubClient::join(&session_token, server_id, hwid.as_deref())
+            crate::hwid::exchange_hub_ticket(&session_token, server_id)
                 .await
                 .map_err(|e| format!("Failed to get auth ticket: {e}"))
         });
@@ -567,52 +563,6 @@ impl ControlServer {
     }
 }
 
-pub fn generate_hwid() -> Option<String> {
-    use sha2::{Digest, Sha256};
-    use sysinfo::{Motherboard, Product, System};
-
-    let mut hasher = Sha256::new();
-    let mut has_data = false;
-
-    if let Some(uuid) = Product::uuid() {
-        hasher.update(uuid.as_bytes());
-        has_data = true;
-    }
-    if let Some(serial) = Product::serial_number() {
-        hasher.update(serial.as_bytes());
-        has_data = true;
-    }
-
-    if let Some(mb) = Motherboard::new() {
-        if let Some(serial) = mb.serial_number() {
-            hasher.update(serial.as_bytes());
-            has_data = true;
-        }
-        if let Some(name) = mb.name() {
-            hasher.update(name.as_bytes());
-        }
-        if let Some(vendor) = mb.vendor_name() {
-            hasher.update(vendor.as_bytes());
-        }
-    }
-
-    let sys = System::new();
-    if let Some(cpu) = sys.cpus().first() {
-        hasher.update(cpu.vendor_id().as_bytes());
-        hasher.update(cpu.brand().as_bytes());
-        has_data = true;
-    }
-
-    let config = crate::config::get_config();
-    hasher.update(format!("{}-hwid-v1", config.variant).as_bytes());
-
-    if has_data {
-        use base64::Engine;
-        Some(base64::engine::general_purpose::STANDARD.encode(hasher.finalize()))
-    } else {
-        None
-    }
-}
 
 #[allow(clippy::unused_async)]
 async fn refresh_auth_token(

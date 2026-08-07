@@ -111,7 +111,8 @@ impl HubClient {
             }
         }
 
-        let message = serde_json::from_str::<ErrorResponse>(&body).map_or_else(|_| format!("HTTP {status}"), |e| e.error);
+        let message = serde_json::from_str::<ErrorResponse>(&body)
+            .map_or_else(|_| format!("HTTP {status}"), |e| e.error);
 
         match status {
             s if s == reqwest::StatusCode::UNAUTHORIZED => Err(HubAuthError::InvalidCredentials),
@@ -142,12 +143,7 @@ impl HubClient {
             .map_err(|e| HubAuthError::Network(format!("Invalid response: {e}")))
     }
 
-    /// Request an auth ticket for connecting to a game server.
-    pub async fn join(
-        token: &str,
-        server_id: &str,
-        hwid: Option<&str>,
-    ) -> Result<String, HubAuthError> {
+    pub async fn join(token: &str, server_id: &str) -> Result<String, HubAuthError> {
         let client = Self::from_config()?;
 
         let response = client
@@ -156,7 +152,6 @@ impl HubClient {
             .header("Authorization", format!("SS13Auth {token}"))
             .json(&serde_json::json!({
                 "server_id": server_id,
-                "hwid": hwid,
             }))
             .send()
             .await
@@ -167,6 +162,51 @@ impl HubClient {
             let body = response.text().await.unwrap_or_default();
             return Err(HubAuthError::Server(format!(
                 "Join failed (HTTP {status}): {body}"
+            )));
+        }
+
+        let body: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| HubAuthError::Network(format!("Invalid response: {e}")))?;
+
+        body.get("nonce")
+            .ok_or(HubAuthError::Server(
+                "missing nonce in response".to_string(),
+            ))?
+            .as_str()
+            .map(String::from)
+            .ok_or_else(|| HubAuthError::Server("missing nonce in response".into()))
+    }
+
+    pub async fn join_complete(
+        token: &str,
+        nonce: &str,
+        hwid_version: u32,
+        components: &[serde_json::Value],
+        signature: Option<&str>,
+    ) -> Result<String, HubAuthError> {
+        let client = Self::from_config()?;
+
+        let response = client
+            .http
+            .post(format!("{}/session/join/complete", client.base_url))
+            .header("Authorization", format!("SS13Auth {token}"))
+            .json(&serde_json::json!({
+                "nonce": nonce,
+                "hwid_version": hwid_version,
+                "components": components,
+                "signature": signature,
+            }))
+            .send()
+            .await
+            .map_err(|e| HubAuthError::Network(format!("Failed to connect: {e}")))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(HubAuthError::Server(format!(
+                "Join complete failed (HTTP {status}): {body}"
             )));
         }
 
@@ -286,7 +326,8 @@ impl HubClient {
         }
 
         let body_text = response.text().await.unwrap_or_default();
-        let message = serde_json::from_str::<ErrorResponse>(&body_text).map_or_else(|_| "OAuth exchange failed".to_string(), |e| e.error);
+        let message = serde_json::from_str::<ErrorResponse>(&body_text)
+            .map_or_else(|_| "OAuth exchange failed".to_string(), |e| e.error);
         Err(HubAuthError::Server(message))
     }
 

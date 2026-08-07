@@ -9,6 +9,7 @@ on:
 
 env:
   STEAMWORKS_SDK_COMMIT: "494c2d680b9e47bbc369496b57568f44ef2f6796"
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
 
 jobs:
   build-windows:
@@ -63,14 +64,30 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Configure SSH for private HWID crate
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SS13HWID_DEPLOY_KEY }}
+
+      - name: Inject real HWID crate
+        run: ./scripts/inject-hwid.sh
+
+      - name: Write HWID signing key
+        shell: pwsh
+        run: |
+          $bytes = [Convert]::FromBase64String("${{ secrets.SS13HWID_SIGNING_KEY }}")
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\hwid-signing-key", $bytes)
+          "SS13HWID_SIGNING_KEY_PATH=$env:RUNNER_TEMP\hwid-signing-key" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STEAM_APP_ID: "4313790"
           STEAM_APP_NAME: "production"
+          SS13HWID_SIGNING_KEY_PATH: ${{ env.SS13HWID_SIGNING_KEY_PATH }}
         with:
-          args: --features cm_ss13,steam --config src-tauri/tauri.cm.conf.json --config src-tauri/tauri.steam.conf.json
+          args: --features cm_ss13,steam,hwid --config src-tauri/tauri.cm.conf.json --config src-tauri/tauri.steam.conf.json
 
       - name: Prepare Windows artifacts
         shell: pwsh
@@ -198,6 +215,19 @@ jobs:
             -o ~/.cache/tauri/quick-sharun.sh
           chmod +x ~/.cache/tauri/quick-sharun.sh
 
+      - name: Configure SSH for private HWID crate
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SS13HWID_DEPLOY_KEY }}
+
+      - name: Inject real HWID crate
+        run: ./scripts/inject-hwid.sh
+
+      - name: Write HWID signing key
+        run: |
+          echo -n "${{ secrets.SS13HWID_SIGNING_KEY }}" | base64 -d > /tmp/hwid-signing-key
+          echo "SS13HWID_SIGNING_KEY_PATH=/tmp/hwid-signing-key" >> "$GITHUB_ENV"
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0.6.1
         env:
@@ -207,8 +237,9 @@ jobs:
           STEAM_APP_NAME: "production"
           TAURI_BUNDLER_NEW_APPIMAGE_FORMAT: "true"
           ADD_DIR: "/tmp/lib/CM-SS13 Launcher"
+          SS13HWID_SIGNING_KEY_PATH: ${{ env.SS13HWID_SIGNING_KEY_PATH }}
         with:
-          args: --features cm_ss13,steam --config src-tauri/tauri.cm.conf.json --config src-tauri/tauri.steam.conf.json --config src-tauri/tauri.linux.conf.json
+          args: --features cm_ss13,steam,hwid --config src-tauri/tauri.cm.conf.json --config src-tauri/tauri.steam.conf.json --config src-tauri/tauri.linux.conf.json
           tauriScript: cargo tauri
 
       - name: Extract AppImage and prepare artifacts

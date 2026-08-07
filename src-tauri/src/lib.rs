@@ -5,6 +5,7 @@ pub mod config;
 mod control_server;
 mod discord;
 mod error;
+mod hwid;
 #[cfg(target_os = "windows")]
 mod job_object;
 mod logging;
