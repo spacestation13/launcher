@@ -123,6 +123,7 @@
     "steamUser": "Steam User",
     "clickToAuth": "Click connect to authenticate",
     "loggedIn": "Logged in",
+    "accountSettings": "Account Settings",
     "checking": "Checking..."
   },
   "servers": {

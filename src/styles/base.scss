@@ -915,6 +915,15 @@ body {
   font-size: 12px;
 }
 
+.account-link {
+  color: var(--accent);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .footer-actions {
   display: flex;
   gap: 8px;

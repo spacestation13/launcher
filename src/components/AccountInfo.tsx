@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { commands } from "../bindings";
 import { useAuthFlow } from "../hooks";
 import { unwrap } from "../lib/unwrap";
-import { useAuthStore, useByondStore, useSettingsStore, useSteamStore } from "../stores";
+import { useAuthStore, useByondStore, useConfigStore, useSettingsStore, useSteamStore } from "../stores";
 
 interface AccountAction {
   label: string;
@@ -15,7 +15,7 @@ interface AccountAction {
 interface AccountDisplayProps {
   avatar: string;
   name: string;
-  status: string;
+  status: ReactNode;
   actions?: AccountAction[];
 }
 
@@ -51,6 +51,7 @@ export const AccountInfo = () => {
     handleByondLogout: onByondLogout,
   } = useAuthFlow();
   const authMode = useSettingsStore((s) => s.authMode);
+  const config = useConfigStore((s) => s.config);
   const authState = useAuthStore((s) => s.authState);
   const steamUser = useSteamStore((s) => s.user);
   const steamAccessToken = useSteamStore((s) => s.accessToken);
@@ -151,11 +152,19 @@ export const AccountInfo = () => {
 
   if (authState.logged_in && authState.user) {
     const displayName = authState.user.name || authState.user.preferred_username || "User";
+    const accountUrl = authMode === "hub" ? config?.urls.account_url : null;
+    const status = accountUrl ? (
+      <a className="account-link" onClick={() => commands.openUrl(accountUrl)}>
+        {t("account.accountSettings")}
+      </a>
+    ) : (
+      authState.user.email || t("account.loggedIn")
+    );
     return (
       <AccountDisplay
         avatar={displayName.charAt(0).toUpperCase()}
         name={displayName}
-        status={authState.user.email || t("account.loggedIn")}
+        status={status}
         actions={[{ label: t("common.logout"), onClick: onLogout }]}
       />
     );

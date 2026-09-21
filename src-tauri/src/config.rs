@@ -75,6 +75,7 @@ pub struct LauncherUrls {
     pub steam_auth: Option<&'static str>,
     pub byond_hash_api: Option<&'static str>,
     pub register_url: Option<&'static str>,
+    pub account_url: Option<&'static str>,
     pub help_url: &'static str,
 }
 
@@ -118,6 +119,7 @@ pub fn get_config() -> LauncherConfig {
             steam_auth: Some("https://db.cm-ss13.com/api/Steam/Authenticate"),
             byond_hash_api: Some("https://db.cm-ss13.com/api/ByondHash"),
             register_url: None,
+            account_url: None,
             help_url: "https://github.com/spacestation13/launcher/issues",
         },
         strings: LauncherStrings {
@@ -194,6 +196,7 @@ pub fn get_config() -> LauncherConfig {
             steam_auth: Some("https://api.spacestation13.com/auth/steam"),
             byond_hash_api: None,
             register_url: Some("https://hub.spacestation13.com/register"),
+            account_url: Some("https://hub.spacestation13.com/account"),
             help_url: "https://github.com/spacestation13/launcher/issues",
         },
         strings: LauncherStrings {
