@@ -1,9 +1,18 @@
 use crate::error::{CommandError, CommandResult};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
+
+fn deserialize_with_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + serde::de::DeserializeOwned,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).unwrap_or_default())
+}
 
 const SETTINGS_FILE: &str = "settings.json";
 
@@ -39,14 +48,15 @@ pub enum RenderingPipeline {
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct AppSettings {
+    #[serde(default, deserialize_with = "deserialize_with_default")]
     pub auth_mode: AuthMode,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_with_default")]
     pub theme: Theme,
     #[serde(default)]
     pub notification_servers: HashSet<String>,
     #[serde(default)]
     pub locale: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_with_default")]
     pub rendering_pipeline: RenderingPipeline,
     #[serde(default)]
     pub favorite_servers: HashSet<String>,
