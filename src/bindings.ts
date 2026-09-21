@@ -543,7 +543,7 @@ async getInitialDeepLinks() : Promise<string[]> {
 
 /** user-defined types **/
 
-export type AppSettings = { auth_mode: AuthMode; theme?: Theme; notification_servers?: string[]; locale?: string | null; rendering_pipeline?: RenderingPipeline; favorite_servers?: string[]; trusted_direct_connect_addresses?: string[]; rich_presence_enabled?: boolean; whitelisted_servers?: string[]; accepted_tos_servers?: string[] }
+export type AppSettings = { auth_mode?: AuthMode; theme?: Theme; notification_servers?: string[]; locale?: string | null; rendering_pipeline?: RenderingPipeline; favorite_servers?: string[]; trusted_direct_connect_addresses?: string[]; rich_presence_enabled?: boolean; whitelisted_servers?: string[]; accepted_tos_servers?: string[] }
 export type AuthError = { code: string; message: string; linking_url: string | null }
 export type AuthMode = "oidc" | "hub" | "byond" | "steam"
 export type AuthState = { logged_in: boolean; user: UserInfo | null; loading: boolean; error: string | null }
