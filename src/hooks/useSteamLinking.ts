@@ -35,7 +35,7 @@ export function useSteamLinking() {
   const [pendingServerId, setPendingServerId] = useState<string | null>(null);
 
   const handleSteamAuthenticate = useCallback(
-    async (createAccountIfMissing: boolean) => {
+    async (createAccountIfMissing: boolean, acceptedTos = false) => {
       setSteamModal((prev) => ({
         ...prev,
         state: "loading",
@@ -43,7 +43,7 @@ export function useSteamLinking() {
         linkingUrl: undefined,
       }));
 
-      const result = await authenticateSteam(createAccountIfMissing);
+      const result = await authenticateSteam(createAccountIfMissing, acceptedTos);
 
       if (result?.success && result.access_token) {
         setSteamModal(CLOSED);
@@ -64,6 +64,15 @@ export function useSteamLinking() {
           state: "linking",
           error: undefined,
           linkingUrl: result.linking_url || undefined,
+        });
+        return result;
+      }
+      if (result?.requires_tos) {
+        setSteamModal({
+          visible: true,
+          state: "tos",
+          error: undefined,
+          linkingUrl: undefined,
         });
         return result;
       }

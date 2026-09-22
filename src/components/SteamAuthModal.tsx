@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { commands } from "../bindings";
 import { Modal, ModalContent, ModalSpinner } from "./Modal";
 
-export type SteamAuthModalState = "idle" | "loading" | "linking" | "error";
+export type SteamAuthModalState = "idle" | "loading" | "linking" | "tos" | "error";
 
 interface SteamAuthModalProps {
   visible: boolean;
@@ -11,7 +11,9 @@ interface SteamAuthModalProps {
   error?: string;
   linkingUrl?: string;
   authProviderName: string;
-  onAuthenticate: (createAccount: boolean) => void;
+  onAuthenticate: (createAccount: boolean, acceptedTos?: boolean) => void;
+  tosUrl?: string;
+  privacyUrl?: string;
   onClose: () => void;
 }
 
@@ -22,6 +24,8 @@ export const SteamAuthModal = ({
   linkingUrl,
   authProviderName,
   onAuthenticate,
+  tosUrl,
+  privacyUrl,
   onClose,
 }: SteamAuthModalProps) => {
   const { t } = useTranslation();
@@ -36,6 +40,7 @@ export const SteamAuthModal = ({
     idle: t("auth.steamAuth"),
     loading: t("auth.authenticating"),
     linking: t("auth.steamLinkingTitle"),
+    tos: t("auth.tosRequired"),
     error: t("auth.authFailed"),
   };
 
@@ -63,6 +68,40 @@ export const SteamAuthModal = ({
             </button>
             <button type="button" className="button-secondary" onClick={() => onAuthenticate(true)}>
               {t("auth.steamNoStart")}
+            </button>
+          </div>
+        </ModalContent>
+      )}
+      {state === "tos" && (
+        <ModalContent>
+          <p>{t("auth.tosPrompt")}</p>
+          <div className="auth-modal-buttons">
+            {tosUrl && (
+              <button
+                type="button"
+                className="hub-login-toggle"
+                onClick={() => commands.openUrl(tosUrl)}
+              >
+                {t("auth.viewTos")}
+              </button>
+            )}
+            {tosUrl && privacyUrl && <span className="hub-login-separator">·</span>}
+            {privacyUrl && (
+              <button
+                type="button"
+                className="hub-login-toggle"
+                onClick={() => commands.openUrl(privacyUrl)}
+              >
+                {t("auth.viewPrivacy")}
+              </button>
+            )}
+          </div>
+          <div className="auth-modal-buttons" style={{ marginTop: 12 }}>
+            <button type="button" className="button" onClick={() => onAuthenticate(true, true)}>
+              {t("auth.acceptAndContinue")}
+            </button>
+            <button type="button" className="button-secondary" onClick={onClose}>
+              {t("common.decline")}
             </button>
           </div>
         </ModalContent>

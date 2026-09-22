@@ -138,7 +138,21 @@ export function useAuthHandlers() {
 
   const handleSteamLogin = useCallback(async () => {
     setAuthModal({ visible: true, state: "loading", error: undefined });
-    const result = await hubSteamLogin();
+    const result = await hubSteamLogin(false);
+    if (result.success) {
+      setAuthModal(CLOSED);
+    } else if (result.requires2fa) {
+      setAuthModal({ visible: true, state: "2fa", error: undefined });
+    } else if (result.requiresTos) {
+      setAuthModal({ visible: true, state: "tos", error: undefined });
+    } else {
+      setAuthModal({ visible: true, state: "error", error: result.error });
+    }
+  }, [hubSteamLogin]);
+
+  const handleAcceptTos = useCallback(async () => {
+    setAuthModal({ visible: true, state: "loading", error: undefined });
+    const result = await hubSteamLogin(true);
     if (result.success) {
       setAuthModal(CLOSED);
     } else if (result.requires2fa) {
@@ -163,6 +177,7 @@ export function useAuthHandlers() {
     handleHubLogin,
     handleOAuthLogin,
     handleSteamLogin,
+    handleAcceptTos,
     handleAuthModalClose,
     onLoginRequired,
   };

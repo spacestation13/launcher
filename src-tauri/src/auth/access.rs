@@ -109,7 +109,7 @@ async fn get_steam_token(app: &AppHandle) -> Result<AccessMethod, AuthError> {
             linking_url: None,
         })?;
 
-    let result = authenticate_with_steam(&steam_state, false)
+    let result = authenticate_with_steam(&steam_state, false, false)
         .await
         .map_err(|e| AuthError {
             code: "steam_error".to_string(),

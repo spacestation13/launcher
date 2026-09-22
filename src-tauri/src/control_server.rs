@@ -579,7 +579,7 @@ async fn refresh_auth_token(
                     .try_state::<Arc<crate::steam::SteamState>>()
                     .ok_or("Steam state not available")?;
 
-                let auth_result = crate::steam::authenticate_with_steam(&steam_state, false)
+                let auth_result = crate::steam::authenticate_with_steam(&steam_state, false, false)
                     .await
                     .map_err(|e| e.to_string())?;
 

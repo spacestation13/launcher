@@ -13,6 +13,8 @@ export function formatCommandError(err: CommandError): string {
       return t("errors.token_expired");
     case "requires_2fa":
       return t("errors.requires_2fa");
+    case "requires_tos":
+      return t("errors.requires_tos", "Terms of Service acceptance required");
     case "invalid_credentials":
       return t("errors.invalid_credentials");
     case "account_locked":

@@ -42,6 +42,7 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
     handleHubLogin,
     handleOAuthLogin,
     handleSteamLogin,
+    handleAcceptTos,
     handleAuthModalClose,
     onLoginRequired,
   } = useAuthHandlers();
@@ -78,12 +79,17 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
         onHubLogin={handleHubLogin}
         onOAuthLogin={handleOAuthLogin}
         onSteamLogin={handleSteamLogin}
+        onAcceptTos={handleAcceptTos}
+        tosUrl={config?.urls.hub_api ? `${config.urls.hub_api.replace(/\/api$/, "")}/about#tos` : undefined}
+        privacyUrl={config?.urls.hub_api ? `${config.urls.hub_api.replace(/\/api$/, "")}/about#privacy` : undefined}
         onClose={handleAuthModalClose}
       />
       <SteamAuthModal
         {...steamModal}
         authProviderName={config?.strings.auth_provider_name ?? ""}
         onAuthenticate={handleSteamAuthenticate}
+        tosUrl={config?.urls.hub_api ? `${config.urls.hub_api.replace(/\/api$/, "")}/about#tos` : undefined}
+        privacyUrl={config?.urls.hub_api ? `${config.urls.hub_api.replace(/\/api$/, "")}/about#privacy` : undefined}
         onClose={handleSteamModalClose}
       />
       {children}

@@ -69,7 +69,12 @@
     "steamNoStart": "No, start now",
     "loginPromptDefault": "Please log in to continue.",
     "hubLoginToggle": "Create account or sign in",
-    "backToSteam": "Back to Steam login"
+    "backToSteam": "Back to Steam login",
+    "tosRequired": "Terms of Service",
+    "tosPrompt": "To create your account, you must accept the Terms of Service and Privacy Policy.",
+    "viewTos": "Terms of Service",
+    "viewPrivacy": "Privacy Policy",
+    "acceptAndContinue": "Accept & Continue"
   },
   "connection": {
     "connecting": "Connecting to {{server}}...",

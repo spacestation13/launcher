@@ -127,9 +127,9 @@ async hubComplete2fa(totpCode: string) : Promise<Result<AuthState, CommandError>
     else return { status: "error", error: e  as any };
 }
 },
-async hubSteamLogin() : Promise<Result<AuthState, CommandError>> {
+async hubSteamLogin(acceptedTos: boolean) : Promise<Result<AuthState, CommandError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("hub_steam_login") };
+    return { status: "ok", data: await TAURI_INVOKE("hub_steam_login", { acceptedTos }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -353,9 +353,9 @@ async cancelSteamAuthTicket() : Promise<Result<null, CommandError>> {
     else return { status: "error", error: e  as any };
 }
 },
-async steamAuthenticate(createAccountIfMissing: boolean) : Promise<Result<SteamAuthResult, CommandError>> {
+async steamAuthenticate(createAccountIfMissing: boolean, acceptedTos: boolean) : Promise<Result<SteamAuthResult, CommandError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("steam_authenticate", { createAccountIfMissing }) };
+    return { status: "ok", data: await TAURI_INVOKE("steam_authenticate", { createAccountIfMissing, acceptedTos }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -553,7 +553,7 @@ export type AuthState = { logged_in: boolean; user: UserInfo | null; loading: bo
 export type ByondLoginResult = { username: string | null }
 export type ByondSessionCheck = { logged_in: boolean; username: string | null; web_id: string | null }
 export type ByondVersionInfo = { version: string; installed: boolean; path: string | null; last_used: string | null }
-export type CommandError = { type: "network"; data: string } | { type: "not_authenticated" } | { type: "token_expired" } | { type: "requires_2fa" } | { type: "invalid_credentials" } | { type: "account_locked" } | { type: "requires_linking"; data: { url: string } } | { type: "not_found"; data: string } | { type: "io"; data: string } | { type: "not_configured"; data: { feature: string } } | { type: "unsupported_platform"; data: { feature: string; platform: string } } | { type: "busy"; data: { operation: string } } | { type: "cancelled"; data: { operation: string } } | { type: "timeout"; data: { operation: string } } | { type: "internal"; data: string } | { type: "webview"; data: string } | { type: "invalid_response"; data: string } | { type: "invalid_input"; data: string }
+export type CommandError = { type: "network"; data: string } | { type: "not_authenticated" } | { type: "token_expired" } | { type: "requires_2fa" } | { type: "requires_tos" } | { type: "invalid_credentials" } | { type: "account_locked" } | { type: "requires_linking"; data: { url: string } } | { type: "not_found"; data: string } | { type: "io"; data: string } | { type: "not_configured"; data: { feature: string } } | { type: "unsupported_platform"; data: { feature: string; platform: string } } | { type: "busy"; data: { operation: string } } | { type: "cancelled"; data: { operation: string } } | { type: "timeout"; data: { operation: string } } | { type: "internal"; data: string } | { type: "webview"; data: string } | { type: "invalid_response"; data: string } | { type: "invalid_input"; data: string }
 export type ConnectionResult = { success: boolean; message: string; auth_error: AuthError | null }
 export type DirectConnectInfo = { hostname: string; port: number; server_id: string | null; trust: DirectConnectTrust; verified_domain?: string | null; server_name?: string | null }
 export type DirectConnectTrust = "HubVerified" | "HubKnown" | "DomainAttested" | "SelfReported" | "ByondOnly" | "Unreachable"
@@ -574,7 +574,7 @@ export type ServerLink = { link: string; type: string }
 export type SinglePlayerStatus = { installed: boolean; version: string | null; release_tag: string | null; path: string | null }
 export type SingleplayerConfig = { github_repo: string | null; build_asset_name: string | null; dmb_name: string | null }
 export type SocialLink = { name: string; url: string; icon: string }
-export type SteamAuthResult = { success: boolean; user_exists: boolean; access_token: string | null; requires_linking: boolean; linking_url: string | null; error: string | null }
+export type SteamAuthResult = { success: boolean; user_exists: boolean; access_token: string | null; requires_linking: boolean; linking_url: string | null; error: string | null; requires_tos?: boolean }
 export type SteamLaunchOptions = { raw: string; connect_target: string | null }
 export type SteamUserInfo = { steam_id: string; display_name: string }
 export type TermsOfService = { url: string | null }

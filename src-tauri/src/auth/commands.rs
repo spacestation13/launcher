@@ -360,6 +360,7 @@ pub async fn hub_oauth_login(app: AppHandle, provider: String) -> CommandResult<
 pub async fn hub_steam_login(
     app: AppHandle,
     steam_state: tauri::State<'_, std::sync::Arc<crate::steam::SteamState>>,
+    accepted_tos: bool,
 ) -> CommandResult<AuthState> {
     tracing::info!("Starting hub Steam login");
 
@@ -386,6 +387,7 @@ pub async fn hub_steam_login(
             "instance": crate::steam::get_steam_app_name(),
             "display_name": display_name,
             "create_account_if_missing": true,
+            "accepted_tos": accepted_tos,
         }))
         .send()
         .await
@@ -404,6 +406,11 @@ pub async fn hub_steam_login(
         .json()
         .await
         .map_err(|e| CommandError::Network(format!("Failed to parse response: {e}")))?;
+
+    if body["requires_tos"].as_bool() == Some(true) {
+        steam_state.cancel_auth_ticket();
+        return Err(CommandError::RequiresTos);
+    }
 
     if body["success"].as_bool() != Some(true) {
         steam_state.cancel_auth_ticket();

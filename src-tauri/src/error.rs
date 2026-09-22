@@ -18,6 +18,9 @@ pub enum CommandError {
     #[serde(rename = "requires_2fa")]
     Requires2fa,
 
+    #[error("terms of service acceptance required")]
+    RequiresTos,
+
     #[error("invalid credentials")]
     InvalidCredentials,
 

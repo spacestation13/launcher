@@ -18,7 +18,7 @@ interface AuthStore {
   hubOAuthLogin: (
     provider: string,
   ) => Promise<{ success: boolean; error?: string; requires2fa?: boolean }>;
-  hubSteamLogin: () => Promise<{ success: boolean; error?: string; requires2fa?: boolean }>;
+  hubSteamLogin: (acceptedTos?: boolean) => Promise<{ success: boolean; error?: string; requires2fa?: boolean; requiresTos?: boolean }>;
   hubComplete2fa: (totpCode: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   initListener: () => Promise<() => void>;
@@ -82,14 +82,17 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     return { success: false, error: formatCommandError(r.error) };
   },
 
-  hubSteamLogin: async () => {
-    const r = await commands.hubSteamLogin();
+  hubSteamLogin: async (acceptedTos = false) => {
+    const r = await commands.hubSteamLogin(acceptedTos);
     if (r.status === "ok") {
       set({ authState: r.data });
       return { success: r.data.logged_in };
     }
     if (r.error.type === "requires_2fa") {
       return { success: false, requires2fa: true };
+    }
+    if (r.error.type === "requires_tos") {
+      return { success: false, requiresTos: true };
     }
     return { success: false, error: formatCommandError(r.error) };
   },

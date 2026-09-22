@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { commands } from "../bindings";
 import { Modal, ModalContent, ModalSpinner } from "./Modal";
 
-export type AuthModalState = "idle" | "loading" | "error" | "2fa";
+export type AuthModalState = "idle" | "loading" | "error" | "2fa" | "tos";
 
 interface AuthModalProps {
   visible: boolean;
@@ -23,6 +23,9 @@ interface AuthModalProps {
   onHubLogin: (username: string, password: string, totpCode?: string) => void;
   onOAuthLogin: (provider: string) => void;
   onSteamLogin: () => void;
+  onAcceptTos: () => void;
+  tosUrl?: string;
+  privacyUrl?: string;
   onClose: () => void;
 }
 
@@ -49,6 +52,9 @@ export const AuthModal = ({
   onHubLogin,
   onOAuthLogin,
   onSteamLogin,
+  onAcceptTos,
+  tosUrl,
+  privacyUrl,
   onClose,
 }: AuthModalProps) => {
   const { t } = useTranslation();
@@ -84,6 +90,7 @@ export const AuthModal = ({
     "2fa": t("auth.twoFactorTitle"),
     loading: t("auth.authenticating"),
     error: t("auth.authFailed"),
+    tos: t("auth.tosRequired"),
   };
 
   return (
@@ -254,6 +261,40 @@ export const AuthModal = ({
         <ModalContent>
           {useHubAuth ? <p>{t("auth.loggingIn")}</p> : <p>{t("auth.completeBrowserLogin")}</p>}
           <ModalSpinner />
+        </ModalContent>
+      )}
+      {state === "tos" && (
+        <ModalContent>
+          <p>{t("auth.tosPrompt")}</p>
+          <div className="auth-modal-buttons">
+            {tosUrl && (
+              <button
+                type="button"
+                className="hub-login-toggle"
+                onClick={() => commands.openUrl(tosUrl)}
+              >
+                {t("auth.viewTos")}
+              </button>
+            )}
+            {tosUrl && privacyUrl && <span className="hub-login-separator">·</span>}
+            {privacyUrl && (
+              <button
+                type="button"
+                className="hub-login-toggle"
+                onClick={() => commands.openUrl(privacyUrl)}
+              >
+                {t("auth.viewPrivacy")}
+              </button>
+            )}
+          </div>
+          <div className="auth-modal-buttons" style={{ marginTop: 12 }}>
+            <button type="button" className="button" onClick={onAcceptTos}>
+              {t("auth.acceptAndContinue")}
+            </button>
+            <button type="button" className="button-secondary" onClick={onClose}>
+              {t("common.decline")}
+            </button>
+          </div>
         </ModalContent>
       )}
       {state === "error" && (

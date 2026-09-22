@@ -28,6 +28,8 @@ pub struct SteamAuthResult {
     pub requires_linking: bool,
     pub linking_url: Option<String>,
     pub error: Option<String>,
+    #[serde(default)]
+    pub requires_tos: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +39,7 @@ struct SteamAuthRequest {
     instance: String,
     display_name: String,
     create_account_if_missing: bool,
+    accepted_tos: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,6 +50,8 @@ struct SteamAuthResponse {
     requires_linking: bool,
     linking_url: Option<String>,
     error: Option<String>,
+    #[serde(default)]
+    requires_tos: bool,
 }
 
 #[tauri::command]
@@ -86,6 +91,7 @@ pub async fn cancel_steam_auth_ticket(
 pub async fn authenticate_with_steam(
     steam_state: &Arc<SteamState>,
     create_account_if_missing: bool,
+    accepted_tos: bool,
 ) -> CommandResult<SteamAuthResult> {
     tracing::info!("Starting Steam authentication");
     let steam_id = steam_state.get_steam_id().to_string();
@@ -101,6 +107,7 @@ pub async fn authenticate_with_steam(
         instance: get_steam_app_name(),
         display_name,
         create_account_if_missing,
+        accepted_tos,
     };
 
     let config = crate::config::get_config();
@@ -139,6 +146,7 @@ pub async fn authenticate_with_steam(
         requires_linking: auth_response.requires_linking,
         linking_url: auth_response.linking_url,
         error: auth_response.error,
+        requires_tos: auth_response.requires_tos,
     })
 }
 
@@ -147,8 +155,9 @@ pub async fn authenticate_with_steam(
 pub async fn steam_authenticate(
     steam_state: State<'_, Arc<SteamState>>,
     create_account_if_missing: bool,
+    accepted_tos: bool,
 ) -> CommandResult<SteamAuthResult> {
-    authenticate_with_steam(&steam_state, create_account_if_missing).await
+    authenticate_with_steam(&steam_state, create_account_if_missing, accepted_tos).await
 }
 
 fn parse_connect_target(command_line: &str) -> Option<String> {
