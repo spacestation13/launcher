@@ -198,6 +198,8 @@ mod steam_stubs {
         pub requires_linking: bool,
         pub linking_url: Option<String>,
         pub error: Option<String>,
+        pub requires_tos: bool,
+        pub suggested_username: Option<String>,
     }
     #[derive(serde::Serialize, serde::Deserialize, specta::Type)]
     pub struct SteamLaunchOptions {

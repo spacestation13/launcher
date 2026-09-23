@@ -52,6 +52,7 @@ export const useSteamStore = create<SteamStore>()((set) => ({
         linking_url: null,
         error: err instanceof Error ? err.message : String(err),
         requires_tos: false,
+        suggested_username: null,
       };
     }
   },

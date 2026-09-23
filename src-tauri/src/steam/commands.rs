@@ -28,7 +28,6 @@ pub struct SteamAuthResult {
     pub requires_linking: bool,
     pub linking_url: Option<String>,
     pub error: Option<String>,
-    #[serde(default)]
     pub requires_tos: bool,
     pub suggested_username: Option<String>,
 }
