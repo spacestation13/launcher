@@ -11,7 +11,7 @@ interface SteamStore {
 
   setAccessToken: (token: string | null) => void;
   initialize: () => Promise<boolean>;
-  authenticate: (createAccountIfMissing: boolean, acceptedTos?: boolean) => Promise<SteamAuthResult | null>;
+  authenticate: (createAccountIfMissing: boolean, acceptedTos?: boolean, preferredUsername?: string) => Promise<SteamAuthResult | null>;
   logout: () => void;
   cancelAuthTicket: () => Promise<void>;
 }
@@ -34,9 +34,9 @@ export const useSteamStore = create<SteamStore>()((set) => ({
     }
   },
 
-  authenticate: async (createAccountIfMissing: boolean, acceptedTos = false) => {
+  authenticate: async (createAccountIfMissing: boolean, acceptedTos = false, preferredUsername?: string) => {
     try {
-      const result = unwrap(await commands.steamAuthenticate(createAccountIfMissing, acceptedTos));
+      const result = unwrap(await commands.steamAuthenticate(createAccountIfMissing, acceptedTos, preferredUsername ?? null));
 
       if (result.success && result.access_token) {
         set({ accessToken: result.access_token });

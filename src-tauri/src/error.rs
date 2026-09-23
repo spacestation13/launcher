@@ -19,7 +19,9 @@ pub enum CommandError {
     Requires2fa,
 
     #[error("terms of service acceptance required")]
-    RequiresTos,
+    RequiresTos {
+        suggested_username: Option<String>,
+    },
 
     #[error("invalid credentials")]
     InvalidCredentials,

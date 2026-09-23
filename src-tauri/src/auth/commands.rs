@@ -361,6 +361,7 @@ pub async fn hub_steam_login(
     app: AppHandle,
     steam_state: tauri::State<'_, std::sync::Arc<crate::steam::SteamState>>,
     accepted_tos: bool,
+    preferred_username: Option<String>,
 ) -> CommandResult<AuthState> {
     tracing::info!("Starting hub Steam login");
 
@@ -388,6 +389,7 @@ pub async fn hub_steam_login(
             "display_name": display_name,
             "create_account_if_missing": true,
             "accepted_tos": accepted_tos,
+            "preferred_username": preferred_username,
         }))
         .send()
         .await
@@ -409,7 +411,9 @@ pub async fn hub_steam_login(
 
     if body["requires_tos"].as_bool() == Some(true) {
         steam_state.cancel_auth_ticket();
-        return Err(CommandError::RequiresTos);
+        return Err(CommandError::RequiresTos {
+            suggested_username: body["suggested_username"].as_str().map(|s| s.to_string()),
+        });
     }
 
     if body["success"].as_bool() != Some(true) {

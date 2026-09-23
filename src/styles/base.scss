@@ -1293,6 +1293,30 @@ body {
   }
 }
 
+.auth-username-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+
+  label {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+}
+
+.auth-username-input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .auth-modal-buttons {
   display: flex;
   flex-direction: column;

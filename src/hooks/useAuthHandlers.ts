@@ -11,6 +11,7 @@ export interface AuthModalView {
   visible: boolean;
   state: AuthModalState;
   error?: string;
+  suggestedUsername?: string;
 }
 
 const CLOSED: AuthModalView = { visible: false, state: "idle", error: undefined };
@@ -144,21 +145,21 @@ export function useAuthHandlers() {
     } else if (result.requires2fa) {
       setAuthModal({ visible: true, state: "2fa", error: undefined });
     } else if (result.requiresTos) {
-      setAuthModal({ visible: true, state: "tos", error: undefined });
+      setAuthModal({ visible: true, state: "tos", error: undefined, suggestedUsername: result.suggestedUsername });
     } else {
       setAuthModal({ visible: true, state: "error", error: result.error });
     }
   }, [hubSteamLogin]);
 
-  const handleAcceptTos = useCallback(async () => {
+  const handleAcceptTos = useCallback(async (preferredUsername?: string) => {
     setAuthModal({ visible: true, state: "loading", error: undefined });
-    const result = await hubSteamLogin(true);
+    const result = await hubSteamLogin(true, preferredUsername);
     if (result.success) {
       setAuthModal(CLOSED);
     } else if (result.requires2fa) {
       setAuthModal({ visible: true, state: "2fa", error: undefined });
     } else {
-      setAuthModal({ visible: true, state: "error", error: result.error });
+      setAuthModal((prev) => ({ visible: true, state: "tos" as const, error: result.error, suggestedUsername: prev.suggestedUsername }));
     }
   }, [hubSteamLogin]);
 

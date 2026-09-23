@@ -11,6 +11,7 @@ export interface SteamModalView {
   state: SteamAuthModalState;
   error?: string;
   linkingUrl?: string;
+  suggestedUsername?: string;
 }
 
 const CLOSED: SteamModalView = {
@@ -35,7 +36,7 @@ export function useSteamLinking() {
   const [pendingServerId, setPendingServerId] = useState<string | null>(null);
 
   const handleSteamAuthenticate = useCallback(
-    async (createAccountIfMissing: boolean, acceptedTos = false) => {
+    async (createAccountIfMissing: boolean, acceptedTos = false, preferredUsername?: string) => {
       setSteamModal((prev) => ({
         ...prev,
         state: "loading",
@@ -43,7 +44,7 @@ export function useSteamLinking() {
         linkingUrl: undefined,
       }));
 
-      const result = await authenticateSteam(createAccountIfMissing, acceptedTos);
+      const result = await authenticateSteam(createAccountIfMissing, acceptedTos, preferredUsername);
 
       if (result?.success && result.access_token) {
         setSteamModal(CLOSED);
@@ -73,15 +74,26 @@ export function useSteamLinking() {
           state: "tos",
           error: undefined,
           linkingUrl: undefined,
+          suggestedUsername: result.suggested_username ?? undefined,
         });
         return result;
       }
-      setSteamModal({
-        visible: true,
-        state: "error",
-        error: result?.error || "Authentication failed",
-        linkingUrl: undefined,
-      });
+      if (acceptedTos && result?.error) {
+        setSteamModal((prev) => ({
+          visible: true,
+          state: "tos",
+          error: result.error ?? undefined,
+          linkingUrl: undefined,
+          suggestedUsername: prev.suggestedUsername,
+        }));
+      } else {
+        setSteamModal({
+          visible: true,
+          state: "error",
+          error: result?.error || "Authentication failed",
+          linkingUrl: undefined,
+        });
+      }
       return result;
     },
     [authenticateSteam, connect, pendingServerId, showError],

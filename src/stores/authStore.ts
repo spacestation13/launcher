@@ -18,7 +18,7 @@ interface AuthStore {
   hubOAuthLogin: (
     provider: string,
   ) => Promise<{ success: boolean; error?: string; requires2fa?: boolean }>;
-  hubSteamLogin: (acceptedTos?: boolean) => Promise<{ success: boolean; error?: string; requires2fa?: boolean; requiresTos?: boolean }>;
+  hubSteamLogin: (acceptedTos?: boolean, preferredUsername?: string) => Promise<{ success: boolean; error?: string; requires2fa?: boolean; requiresTos?: boolean; suggestedUsername?: string }>;
   hubComplete2fa: (totpCode: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   initListener: () => Promise<() => void>;
@@ -82,8 +82,8 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     return { success: false, error: formatCommandError(r.error) };
   },
 
-  hubSteamLogin: async (acceptedTos = false) => {
-    const r = await commands.hubSteamLogin(acceptedTos);
+  hubSteamLogin: async (acceptedTos = false, preferredUsername?: string) => {
+    const r = await commands.hubSteamLogin(acceptedTos, preferredUsername ?? null);
     if (r.status === "ok") {
       set({ authState: r.data });
       return { success: r.data.logged_in };
@@ -92,7 +92,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
       return { success: false, requires2fa: true };
     }
     if (r.error.type === "requires_tos") {
-      return { success: false, requiresTos: true };
+      return { success: false, requiresTos: true, suggestedUsername: r.error.data.suggested_username ?? undefined };
     }
     return { success: false, error: formatCommandError(r.error) };
   },

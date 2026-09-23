@@ -30,6 +30,7 @@ pub struct SteamAuthResult {
     pub error: Option<String>,
     #[serde(default)]
     pub requires_tos: bool,
+    pub suggested_username: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,6 +41,8 @@ struct SteamAuthRequest {
     display_name: String,
     create_account_if_missing: bool,
     accepted_tos: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    preferred_username: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +55,7 @@ struct SteamAuthResponse {
     error: Option<String>,
     #[serde(default)]
     requires_tos: bool,
+    suggested_username: Option<String>,
 }
 
 #[tauri::command]
@@ -92,6 +96,7 @@ pub async fn authenticate_with_steam(
     steam_state: &Arc<SteamState>,
     create_account_if_missing: bool,
     accepted_tos: bool,
+    preferred_username: Option<String>,
 ) -> CommandResult<SteamAuthResult> {
     tracing::info!("Starting Steam authentication");
     let steam_id = steam_state.get_steam_id().to_string();
@@ -108,6 +113,7 @@ pub async fn authenticate_with_steam(
         display_name,
         create_account_if_missing,
         accepted_tos,
+        preferred_username,
     };
 
     let config = crate::config::get_config();
@@ -147,6 +153,7 @@ pub async fn authenticate_with_steam(
         linking_url: auth_response.linking_url,
         error: auth_response.error,
         requires_tos: auth_response.requires_tos,
+        suggested_username: auth_response.suggested_username,
     })
 }
 
@@ -156,8 +163,9 @@ pub async fn steam_authenticate(
     steam_state: State<'_, Arc<SteamState>>,
     create_account_if_missing: bool,
     accepted_tos: bool,
+    preferred_username: Option<String>,
 ) -> CommandResult<SteamAuthResult> {
-    authenticate_with_steam(&steam_state, create_account_if_missing, accepted_tos).await
+    authenticate_with_steam(&steam_state, create_account_if_missing, accepted_tos, preferred_username).await
 }
 
 fn parse_connect_target(command_line: &str) -> Option<String> {

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { commands } from "../bindings";
@@ -10,8 +11,9 @@ interface SteamAuthModalProps {
   state: SteamAuthModalState;
   error?: string;
   linkingUrl?: string;
+  suggestedUsername?: string;
   authProviderName: string;
-  onAuthenticate: (createAccount: boolean, acceptedTos?: boolean) => void;
+  onAuthenticate: (createAccount: boolean, acceptedTos?: boolean, preferredUsername?: string) => void;
   tosUrl?: string;
   privacyUrl?: string;
   onClose: () => void;
@@ -22,6 +24,7 @@ export const SteamAuthModal = ({
   state,
   error,
   linkingUrl,
+  suggestedUsername,
   authProviderName,
   onAuthenticate,
   tosUrl,
@@ -29,6 +32,10 @@ export const SteamAuthModal = ({
   onClose,
 }: SteamAuthModalProps) => {
   const { t } = useTranslation();
+  const [username, setUsername] = useState(suggestedUsername ?? "");
+  useEffect(() => {
+    if (suggestedUsername) setUsername(suggestedUsername);
+  }, [suggestedUsername]);
   const openLinkingUrl = async () => {
     if (linkingUrl) {
       await commands.openUrl(linkingUrl);
@@ -74,8 +81,20 @@ export const SteamAuthModal = ({
       )}
       {state === "tos" && (
         <ModalContent>
+          <div className="auth-username-field">
+            <label htmlFor="steam-username">{t("auth.chooseUsername")}</label>
+            <input
+              id="steam-username"
+              type="text"
+              className="auth-username-input"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder={suggestedUsername}
+            />
+          </div>
+          {error && <p className="auth-error-message">{error}</p>}
           <p>{t("auth.tosPrompt")}</p>
-          <div className="auth-modal-buttons">
+          <div className="hub-login-links">
             {tosUrl && (
               <button
                 type="button"
@@ -96,8 +115,13 @@ export const SteamAuthModal = ({
               </button>
             )}
           </div>
-          <div className="auth-modal-buttons" style={{ marginTop: 12 }}>
-            <button type="button" className="button" onClick={() => onAuthenticate(true, true)}>
+          <div className="auth-modal-buttons">
+            <button
+              type="button"
+              className="button"
+              disabled={!username.trim()}
+              onClick={() => onAuthenticate(true, true, username.trim())}
+            >
               {t("auth.acceptAndContinue")}
             </button>
             <button type="button" className="button-secondary" onClick={onClose}>
