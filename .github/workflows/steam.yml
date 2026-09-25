@@ -33,14 +33,14 @@ jobs:
             steam-app-name: "production"
           - variant: ss13
             features: "steam,hwid"
-            tauri-configs: ""
+            tauri-configs: "--config src-tauri/tauri.ss13.steam.conf.json"
             sidecar-app-name: "SS13 Launcher"
             exe-rename: "SS13_Launcher.exe"
             steam-app-id: "5287320"
             steam-app-name: "production"
           - variant: ss13-playtest
             features: "steam,hwid"
-            tauri-configs: ""
+            tauri-configs: "--config src-tauri/tauri.ss13.steam.conf.json"
             sidecar-app-name: "SS13 Launcher"
             exe-rename: "SS13_Launcher.exe"
             steam-app-id: "5287330"

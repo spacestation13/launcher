@@ -33,7 +33,7 @@ on:
 
 env:
   CARGO_NET_GIT_FETCH_WITH_CLI: "true"
-  RUST_LOG: "debug"
+  TAURI_CLI_VERBOSITY: "1"
 
 jobs:
   build:
