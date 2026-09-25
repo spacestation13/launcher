@@ -116,7 +116,7 @@ runs:
       shell: bash
       run: |
         mkdir -p ~/.cache/tauri
-        curl -fsSL --max-time 30 "https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/0131d579b5f5a1633fb6372de991428755f6a437/useful-tools/quick-sharun.sh" \
+        curl -fsSL --max-time 30 "https://raw.githubusercontent.com/pkgforge-dev/Anylinux-AppImages/176c4ca149ca74270a1ecbaa82bf2d12847ec8af/useful-tools/quick-sharun.sh" \
           -o ~/.cache/tauri/quick-sharun.sh
         chmod +x ~/.cache/tauri/quick-sharun.sh
 
