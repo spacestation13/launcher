@@ -166,22 +166,9 @@ jobs:
           path: steam-build/linux/
           retention-days: 1
 
-  deploy-steam:
+  deploy-cm:
     needs: build-steam
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - variant: cm
-            steam-app-id: "4313790"
-            secret-prefix: CM
-          - variant: ss13
-            steam-app-id: "5287320"
-            secret-prefix: SS13
-          - variant: ss13-playtest
-            steam-app-id: "5287330"
-            secret-prefix: SS13
     steps:
       - uses: actions/checkout@v7
 
@@ -192,9 +179,49 @@ jobs:
       - name: Deploy to Steam
         uses: ./.github/actions/steam-deploy
         with:
-          variant: ${{ matrix.variant }}
-          steam_app_id: ${{ matrix.steam-app-id }}
-          steam_username: ${{ secrets[format('{0}_STEAM_USERNAME', matrix.secret-prefix)] }}
-          steam_password: ${{ secrets[format('{0}_STEAM_PASSWORD', matrix.secret-prefix)] }}
-          steam_shared_secret: ${{ secrets[format('{0}_STEAM_SHARED_SECRET', matrix.secret-prefix)] }}
+          variant: cm
+          steam_app_id: "4313790"
+          steam_username: ${{ secrets.CM_STEAM_USERNAME }}
+          steam_password: ${{ secrets.CM_STEAM_PASSWORD }}
+          steam_shared_secret: ${{ secrets.CM_STEAM_SHARED_SECRET }}
+          steam_branch: ${{ github.ref == 'refs/heads/dev' && 'development' || 'latest' }}
+
+  deploy-ss13:
+    needs: build-steam
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sync version to tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: sed -i "s/^version = .*/version = \"${GITHUB_REF_NAME#v}\"/" src-tauri/Cargo.toml
+
+      - name: Deploy to Steam
+        uses: ./.github/actions/steam-deploy
+        with:
+          variant: ss13
+          steam_app_id: "5287320"
+          steam_username: ${{ secrets.SS13_STEAM_USERNAME }}
+          steam_password: ${{ secrets.SS13_STEAM_PASSWORD }}
+          steam_shared_secret: ${{ secrets.SS13_STEAM_SHARED_SECRET }}
+          steam_branch: ${{ github.ref == 'refs/heads/dev' && 'development' || 'latest' }}
+
+  deploy-ss13-playtest:
+    needs: [build-steam, deploy-ss13]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sync version to tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: sed -i "s/^version = .*/version = \"${GITHUB_REF_NAME#v}\"/" src-tauri/Cargo.toml
+
+      - name: Deploy to Steam
+        uses: ./.github/actions/steam-deploy
+        with:
+          variant: ss13-playtest
+          steam_app_id: "5287330"
+          steam_username: ${{ secrets.SS13_STEAM_USERNAME }}
+          steam_password: ${{ secrets.SS13_STEAM_PASSWORD }}
+          steam_shared_secret: ${{ secrets.SS13_STEAM_SHARED_SECRET }}
           steam_branch: ${{ github.ref == 'refs/heads/dev' && 'development' || 'latest' }}
