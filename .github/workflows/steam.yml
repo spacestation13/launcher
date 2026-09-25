@@ -21,14 +21,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [cm]
+        variant: [cm, ss13, ss13-playtest]
         platform: [windows-latest, ubuntu-24.04]
         include:
           - variant: cm
-            features: "cm_ss13,steam,hwid"
+            features: "cm_ss13,steam"
             tauri-configs: "--config src-tauri/tauri.cm.conf.json --config src-tauri/tauri.steam.conf.json"
             sidecar-app-name: "CM-SS13 Launcher"
             exe-rename: "CM_Launcher.exe"
+            steam-app-id: "4313790"
+            steam-app-name: "production"
+          - variant: ss13
+            features: "steam,hwid"
+            tauri-configs: ""
+            sidecar-app-name: "SS13 Launcher"
+            exe-rename: "SS13_Launcher.exe"
+            steam-app-id: "5287320"
+            steam-app-name: "production"
+          - variant: ss13-playtest
+            features: "steam,hwid"
+            tauri-configs: ""
+            sidecar-app-name: "SS13 Launcher"
+            exe-rename: "SS13_Launcher.exe"
+            steam-app-id: "5287330"
+            steam-app-name: "playtest"
     steps:
       - uses: actions/checkout@v7
 
@@ -83,8 +99,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LD_LIBRARY_PATH: ${{ runner.os == 'Linux' && format('/usr/lib:{0}/src-tauri/resources', github.workspace) || '' }}
-          STEAM_APP_ID: "4313790"
-          STEAM_APP_NAME: "production"
+          STEAM_APP_ID: ${{ matrix.steam-app-id }}
+          STEAM_APP_NAME: ${{ matrix.steam-app-name }}
           TAURI_BUNDLER_NEW_APPIMAGE_FORMAT: "true"
           ADD_DIR: "/tmp/lib/${{ matrix.sidecar-app-name }}"
           SS13HWID_SIGNING_KEY_PATH: ${{ env.SS13HWID_SIGNING_KEY_PATH }}
@@ -159,6 +175,13 @@ jobs:
         include:
           - variant: cm
             steam-app-id: "4313790"
+            secret-prefix: CM
+          - variant: ss13
+            steam-app-id: "5287320"
+            secret-prefix: SS13
+          - variant: ss13-playtest
+            steam-app-id: "5287330"
+            secret-prefix: SS13
     steps:
       - uses: actions/checkout@v7
 
@@ -171,7 +194,7 @@ jobs:
         with:
           variant: ${{ matrix.variant }}
           steam_app_id: ${{ matrix.steam-app-id }}
-          steam_username: ${{ secrets.STEAM_USERNAME }}
-          steam_password: ${{ secrets.STEAM_PASSWORD }}
-          steam_shared_secret: ${{ secrets.STEAM_SHARED_SECRET }}
+          steam_username: ${{ secrets[format('{0}_STEAM_USERNAME', matrix.secret-prefix)] }}
+          steam_password: ${{ secrets[format('{0}_STEAM_PASSWORD', matrix.secret-prefix)] }}
+          steam_shared_secret: ${{ secrets[format('{0}_STEAM_SHARED_SECRET', matrix.secret-prefix)] }}
           steam_branch: ${{ github.ref == 'refs/heads/dev' && 'development' || 'latest' }}
