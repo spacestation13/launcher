@@ -181,12 +181,10 @@ fn find_xdg_open() -> Option<String> {
     }
 
     // Fall back to which, but filter out bundled paths
-    if let Ok(output) = Command::new("which").arg("xdg-open").output() {
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !path.is_empty() && is_system_path(&path) {
-                return Some(path);
-            }
+    if let Ok(path) = which::which("xdg-open") {
+        let path_str = path.to_string_lossy().to_string();
+        if is_system_path(&path_str) {
+            return Some(path_str);
         }
     }
 
@@ -396,17 +394,9 @@ fn get_bundled_winetricks(app: &AppHandle) -> Option<PathBuf> {
 
 /// Get cabextract path, preferring system cabextract over bundled for performance
 fn get_cabextract(app: &AppHandle) -> Option<PathBuf> {
-    if let Ok(output) = Command::new("which").arg("cabextract").output() {
-        if output.status.success() {
-            let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !path_str.is_empty() {
-                let system_path = PathBuf::from(&path_str);
-                if system_path.exists() {
-                    tracing::info!("Using system cabextract: {:?}", system_path);
-                    return Some(system_path);
-                }
-            }
-        }
+    if let Ok(system_path) = which::which("cabextract") {
+        tracing::info!("Using system cabextract: {:?}", system_path);
+        return Some(system_path);
     }
 
     // Fall back to bundled cabextract

@@ -27,7 +27,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["unstable"] }
-tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
@@ -38,14 +37,14 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 zip = "2"
-tokio = { version = "1", features = ["full", "sync"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "net", "sync", "macros", "time"] }
 oauth2 = "5"
 tiny_http = "0.12"
 rand = "0.8"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 aes-gcm = "0.10"
 base64 = "0.22"
-dirs = "5"
+dirs = "6"
 open = "5"
 url = "2"
 chrono = { version = "0.4", features = ["serde"] }
@@ -61,9 +60,7 @@ sha2 = "0.10"
 discord-sdk = "0.4.0"
 sysinfo = "0.38"
 parking_lot = "0.12"
-async-trait = "0.1"
 which = "7"
-percent-encoding = "2.3.2"
 tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 futures-util = "0.3"
 zstd = "0.13"
@@ -74,7 +71,6 @@ hickory-resolver = "0.26"
 specta = "=2.0.0-rc.22"
 specta-typescript = "0.0.9"
 tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
-ping = "0.7.1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55.0"

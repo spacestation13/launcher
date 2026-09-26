@@ -35,12 +35,10 @@ fn find_xdg_open() -> Option<String> {
     }
 
     // Fall back to which, but filter out bundled paths
-    if let Ok(output) = Command::new("which").arg("xdg-open").output() {
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !path.is_empty() && is_system_path(&path) {
-                return Some(path);
-            }
+    if let Ok(path) = which::which("xdg-open") {
+        let path_str = path.to_string_lossy().to_string();
+        if is_system_path(&path_str) {
+            return Some(path_str);
         }
     }
 
