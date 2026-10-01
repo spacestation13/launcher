@@ -11,9 +11,17 @@ interface UiFilters {
   searchQuery: string;
 }
 
+interface RecentConnection {
+  serverId: string | null;
+  address: string;
+  serverName: string | null;
+}
+
+const MAX_RECENT_CONNECTIONS = 3;
+
 type UiState = {
   [key: string]: unknown;
-  lastPlayedServer: string | null;
+  recentConnections: RecentConnection[];
   lastViewMode: string | null;
   lastReadAnnouncement: string | null;
   ageVerified: boolean;
@@ -21,17 +29,17 @@ type UiState = {
 };
 
 interface UiStateActions {
-  setLastPlayedServer: (serverId: string) => void;
+  addRecentConnection: (connection: RecentConnection) => void;
   setLastViewMode: (mode: string) => void;
   setLastReadAnnouncement: (id: string) => void;
   setAgeVerified: () => void;
   updateFilters: (patch: Partial<UiFilters>) => void;
 }
 
-export type { UiFilters };
+export type { UiFilters, RecentConnection };
 
 export const useUiStateStore = create<UiState & UiStateActions>()((set, get) => ({
-  lastPlayedServer: null,
+  recentConnections: [],
   lastViewMode: null,
   lastReadAnnouncement: null,
   ageVerified: false,
@@ -45,7 +53,17 @@ export const useUiStateStore = create<UiState & UiStateActions>()((set, get) => 
     searchQuery: "",
   },
 
-  setLastPlayedServer: (serverId) => set({ lastPlayedServer: serverId }),
+  addRecentConnection: (connection) => {
+    const existing = get().recentConnections;
+    const deduped = existing.filter(
+      (c) =>
+        c.address.toLowerCase() !== connection.address.toLowerCase() &&
+        !(connection.serverId && c.serverId === connection.serverId),
+    );
+    set({
+      recentConnections: [connection, ...deduped].slice(0, MAX_RECENT_CONNECTIONS),
+    });
+  },
   setLastViewMode: (mode) => set({ lastViewMode: mode }),
   setLastReadAnnouncement: (id) => set({ lastReadAnnouncement: id }),
   setAgeVerified: () => set({ ageVerified: true }),

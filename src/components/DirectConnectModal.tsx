@@ -1,4 +1,4 @@
-import { faCircleCheck } from "@fortawesome/free-solid-svg-icons";
+import { faCircleCheck, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,6 +7,7 @@ import { commands, DirectConnectInfo } from "../bindings";
 import { useConnect, useError } from "../hooks";
 import { formatCommandError } from "../lib/formatCommandError";
 import { useSettingsStore } from "../stores";
+import { useUiStateStore } from "../stores/uiStateStore";
 import { Modal } from "./Modal";
 
 function TrustInfo({ connectInfo }: { connectInfo: DirectConnectInfo }) {
@@ -50,16 +51,79 @@ function TrustInfo({ connectInfo }: { connectInfo: DirectConnectInfo }) {
     );
   }
 
-  return <p className="settings-description">{t("directConnect.byondOnlyInfo")}</p>;
+  if (connectInfo.trust === "ByondOnly") {
+    return <p className="settings-description">{t("directConnect.byondOnlyInfo")}</p>;
+  }
+
+  return null;
 }
 
-function shouldSkipConfirmation(info: DirectConnectInfo, address: string): boolean {
-  if (info.trust === "HubVerified" || info.trust === "HubKnown") return true;
+function ServerPreview({ connectInfo }: { connectInfo: DirectConnectInfo }) {
+  const { t } = useTranslation();
+
+  const hasName = !!connectInfo.server_name;
+  const isSelfReported =
+    connectInfo.trust === "SelfReported" ||
+    connectInfo.trust === "ByondOnly" ||
+    connectInfo.trust === "DomainAttested";
+  const isHubTrusted =
+    connectInfo.trust === "HubVerified" || connectInfo.trust === "HubKnown";
+
+  return (
+    <div className="server-item">
+      <div className="server-item-row">
+        <div className="server-info">
+          <div className="server-name">
+            {hasName ? connectInfo.server_name : `${connectInfo.hostname}:${connectInfo.port}`}
+            {connectInfo.verified_domain && isHubTrusted && (
+              <span className="badge badge-verified">
+                <FontAwesomeIcon icon={faCircleCheck} /> {connectInfo.verified_domain}
+              </span>
+            )}
+            {hasName && isSelfReported && !connectInfo.verified_domain && (
+              <span className="badge badge-tag">
+                {t("directConnect.selfReportedLabel")}
+              </span>
+            )}
+            {connectInfo.tags?.map((tag) => (
+              <span key={tag} className="badge badge-tag">
+                {tag}
+              </span>
+            ))}
+          </div>
+          {(connectInfo.map_name || connectInfo.server_description) && (
+            <div className="server-details">
+              <div className="detail-line">
+                {[connectInfo.map_name, connectInfo.server_region].filter(Boolean).map((part, i) => (
+                  <span key={String(part)}>
+                    {i > 0 && " · "}
+                    {part}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        {connectInfo.players != null && (
+          <div className="server-stats">
+            <span className="player-count">
+              <FontAwesomeIcon icon={faUsers} />{" "}
+              {connectInfo.player_cap
+                ? t("directConnect.playersCountWithCap", {
+                    count: connectInfo.players,
+                    cap: connectInfo.player_cap,
+                  })
+                : t("directConnect.playersCount", { count: connectInfo.players })}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function shouldSkipConfirmation(_info: DirectConnectInfo, address: string): boolean {
   if (useSettingsStore.getState().isAddressTrusted(address)) return true;
-
-  const needsHubAuth = useSettingsStore.getState().authMode !== "byond";
-  if (!needsHubAuth && info.trust !== "Unreachable") return true;
-
   return false;
 }
 
@@ -90,7 +154,7 @@ export const DirectConnectModal = ({ visible, onClose }: DirectConnectModalProps
       }
       const info = result.data;
       if (shouldSkipConfirmation(info, trimmed)) {
-        await doConnect(trimmed, info.server_id ?? undefined);
+        await doConnect(trimmed, info.server_id ?? undefined, info.server_name ?? undefined);
       } else {
         setConnectInfo(info);
       }
@@ -101,16 +165,23 @@ export const DirectConnectModal = ({ visible, onClose }: DirectConnectModalProps
     }
   };
 
-  const doConnect = async (addr: string, serverId?: string) => {
+  const doConnect = async (addr: string, serverId?: string, serverName?: string) => {
     handleClose();
-    await connectToAddress(addr, "DirectConnect", serverId);
+    const success = await connectToAddress(addr, "DirectConnect", serverId);
+    if (success) {
+      useUiStateStore.getState().addRecentConnection({
+        serverId: serverId ?? null,
+        address: addr,
+        serverName: serverName ?? null,
+      });
+    }
   };
 
   const handleConfirm = async () => {
     if (trustAddress) {
       await useSettingsStore.getState().trustDirectConnectAddress(address.trim());
     }
-    await doConnect(address.trim(), connectInfo?.server_id ?? undefined);
+    await doConnect(address.trim(), connectInfo?.server_id ?? undefined, connectInfo?.server_name ?? undefined);
   };
 
   const handleClose = () => {
@@ -136,6 +207,7 @@ export const DirectConnectModal = ({ visible, onClose }: DirectConnectModalProps
       >
         <div className="modal-body">
           <div className="settings-section">
+            <ServerPreview connectInfo={connectInfo} />
             <TrustInfo connectInfo={connectInfo} />
           </div>
         </div>

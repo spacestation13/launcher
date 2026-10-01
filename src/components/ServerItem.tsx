@@ -88,7 +88,11 @@ export const ServerItem = ({
     try {
       const success = await connect(server.id, "ServerItem.handleConnect");
       if (success) {
-        useUiStateStore.getState().setLastPlayedServer(server.id);
+        useUiStateStore.getState().addRecentConnection({
+          serverId: server.id,
+          address: server.url,
+          serverName: server.name,
+        });
       }
     } catch (err) {
       showError(err instanceof Error ? err.message : String(err));

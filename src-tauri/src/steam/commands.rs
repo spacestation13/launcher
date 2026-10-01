@@ -164,7 +164,13 @@ pub async fn steam_authenticate(
     accepted_tos: bool,
     preferred_username: Option<String>,
 ) -> CommandResult<SteamAuthResult> {
-    authenticate_with_steam(&steam_state, create_account_if_missing, accepted_tos, preferred_username).await
+    authenticate_with_steam(
+        &steam_state,
+        create_account_if_missing,
+        accepted_tos,
+        preferred_username,
+    )
+    .await
 }
 
 fn parse_connect_target(command_line: &str) -> Option<String> {

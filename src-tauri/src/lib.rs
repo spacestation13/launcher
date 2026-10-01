@@ -140,7 +140,10 @@ mod steam_stubs {
 
     #[tauri::command]
     #[specta::specta]
-    pub async fn hub_steam_login(_accepted_tos: bool, _preferred_username: Option<String>) -> CommandResult<crate::auth::AuthState> {
+    pub async fn hub_steam_login(
+        _accepted_tos: bool,
+        _preferred_username: Option<String>,
+    ) -> CommandResult<crate::auth::AuthState> {
         Err(CommandError::NotConfigured {
             feature: "steam".into(),
         })

@@ -872,12 +872,32 @@ pub struct DirectConnectInfo {
     pub verified_domain: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub server_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub server_description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub server_region: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub players: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub player_cap: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub map_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 struct PreflightResult {
     server_id: String,
     domain: Option<String>,
     signature: Option<String>,
+    display_name: Option<String>,
+    description: Option<String>,
+    region: Option<String>,
+    pop: Option<i32>,
+    pop_cap: Option<i32>,
+    map_name: Option<String>,
 }
 
 enum PreflightOutcome {
@@ -921,11 +941,23 @@ async fn topic_preflight(ip: &str, port: u16, challenge: &str) -> PreflightOutco
         };
         let domain = v["domain"].as_str().map(String::from);
         let signature = v["signature"].as_str().map(String::from);
-        tracing::info!("[topic_preflight] {ip}:{port} server_id={server_id} domain={domain:?}");
+        let display_name = v["display_name"].as_str().map(String::from);
+        let description = v["description"].as_str().map(String::from);
+        let region = v["region"].as_str().map(String::from);
+        let pop = v["pop"].as_i64().and_then(|n| i32::try_from(n).ok());
+        let pop_cap = v["pop_cap"].as_i64().and_then(|n| i32::try_from(n).ok());
+        let map_name = v["map_name"].as_str().map(String::from);
+        tracing::info!("[topic_preflight] {ip}:{port} server_id={server_id} domain={domain:?} display_name={display_name:?}");
         PreflightOutcome::Ok(PreflightResult {
             server_id,
             domain,
             signature,
+            display_name,
+            description,
+            region,
+            pop,
+            pop_cap,
+            map_name,
         })
     } else {
         tracing::debug!("[topic_preflight] {ip}:{port} returned non-string response");
@@ -1015,9 +1047,45 @@ async fn verify_domain_attestation(domain: &str, challenge: &str, signature: &st
     valid
 }
 
+fn enrich_from_server_cache(info: &mut DirectConnectInfo, server: &crate::servers::Server) {
+    info.server_name = Some(server.name.clone());
+    info.server_description = server.description.clone();
+    info.server_region = server.region.clone();
+    info.players = Some(server.players);
+    info.player_cap = server.data.as_ref().and_then(|d| d.popcap);
+    info.map_name = server.data.as_ref().map(|d| d.map_name.clone());
+    info.status = Some(server.status.clone());
+    info.tags = server.tags.clone();
+    info.verified_domain = info
+        .verified_domain
+        .clone()
+        .or(server.verified_domain.clone());
+}
+
+fn enrich_from_preflight(info: &mut DirectConnectInfo, preflight: &PreflightResult) {
+    info.server_name = preflight.display_name.clone();
+    info.server_description = preflight.description.clone();
+    info.server_region = preflight.region.clone();
+    info.players = preflight.pop;
+    info.player_cap = preflight.pop_cap;
+    info.map_name = preflight.map_name.clone();
+}
+
+async fn lookup_server_in_cache(
+    app: &AppHandle,
+    server_id: &str,
+) -> Option<crate::servers::Server> {
+    let state = app.try_state::<Arc<ServerState>>()?;
+    let servers = state.get_servers().await;
+    servers.into_iter().find(|s| s.id == server_id)
+}
+
 #[tauri::command]
 #[specta::specta]
-pub async fn resolve_direct_connect(address: String) -> CommandResult<DirectConnectInfo> {
+pub async fn resolve_direct_connect(
+    app: AppHandle,
+    address: String,
+) -> CommandResult<DirectConnectInfo> {
     let address_clean = address.strip_prefix("byond://").unwrap_or(&address);
 
     let parts: Vec<&str> = address_clean.split(':').collect();
@@ -1057,14 +1125,25 @@ pub async fn resolve_direct_connect(address: String) -> CommandResult<DirectConn
             } else {
                 DirectConnectTrust::HubKnown
             };
-            return Ok(DirectConnectInfo {
+            let mut info = DirectConnectInfo {
                 hostname: hostname.to_string(),
                 port,
-                server_id: Some(result.server_id),
+                server_id: Some(result.server_id.clone()),
                 trust,
                 verified_domain: result.verified_domain,
                 server_name: None,
-            });
+                server_description: None,
+                server_region: None,
+                players: None,
+                player_cap: None,
+                map_name: None,
+                status: None,
+                tags: Vec::new(),
+            };
+            if let Some(server) = lookup_server_in_cache(&app, &result.server_id).await {
+                enrich_from_server_cache(&mut info, &server);
+            }
+            return Ok(info);
         }
         Err(crate::auth::hub_client::HubAuthError::NotFound) => {
             tracing::info!("[resolve_direct_connect] server not in hub, trying topic preflight");
@@ -1090,26 +1169,62 @@ pub async fn resolve_direct_connect(address: String) -> CommandResult<DirectConn
 
             if let (Some(domain), Some(signature)) = (&preflight.domain, &preflight.signature) {
                 if verify_domain_attestation(domain, &challenge, signature).await {
-                    return Ok(DirectConnectInfo {
+                    let server_id = preflight.server_id.clone();
+                    let mut info = DirectConnectInfo {
                         hostname: hostname.to_string(),
                         port,
-                        server_id: Some(preflight.server_id),
+                        server_id: Some(server_id.clone()),
                         trust: DirectConnectTrust::DomainAttested,
                         verified_domain: Some(domain.clone()),
                         server_name: None,
-                    });
+                        server_description: None,
+                        server_region: None,
+                        players: None,
+                        player_cap: None,
+                        map_name: None,
+                        status: None,
+                        tags: Vec::new(),
+                    };
+
+                    if let Some(server) = lookup_server_in_cache(&app, &server_id).await {
+                        if server.verified_domain.as_deref() == Some(domain.as_str()) {
+                            tracing::info!(
+                                "[resolve_direct_connect] relay cross-check passed: server_id={server_id} domain={domain}"
+                            );
+                            info.trust = DirectConnectTrust::HubVerified;
+                            enrich_from_server_cache(&mut info, &server);
+                        } else {
+                            tracing::warn!(
+                                "[resolve_direct_connect] relay cross-check failed: domain mismatch for server_id={server_id}"
+                            );
+                            enrich_from_preflight(&mut info, &preflight);
+                        }
+                    } else {
+                        enrich_from_preflight(&mut info, &preflight);
+                    }
+
+                    return Ok(info);
                 }
                 tracing::warn!("[resolve_direct_connect] domain attestation failed for {domain}");
             }
 
-            return Ok(DirectConnectInfo {
+            let mut info = DirectConnectInfo {
                 hostname: hostname.to_string(),
                 port,
-                server_id: Some(preflight.server_id),
+                server_id: Some(preflight.server_id.clone()),
                 trust: DirectConnectTrust::SelfReported,
                 verified_domain: None,
                 server_name: None,
-            });
+                server_description: None,
+                server_region: None,
+                players: None,
+                player_cap: None,
+                map_name: None,
+                status: None,
+                tags: Vec::new(),
+            };
+            enrich_from_preflight(&mut info, &preflight);
+            return Ok(info);
         }
         PreflightOutcome::NoHubAuth => {
             tracing::info!("[resolve_direct_connect] no hub auth available, byond-only");
@@ -1123,6 +1238,13 @@ pub async fn resolve_direct_connect(address: String) -> CommandResult<DirectConn
                 trust: DirectConnectTrust::Unreachable,
                 verified_domain: None,
                 server_name: None,
+                server_description: None,
+                server_region: None,
+                players: None,
+                player_cap: None,
+                map_name: None,
+                status: None,
+                tags: Vec::new(),
             });
         }
     }
@@ -1134,6 +1256,13 @@ pub async fn resolve_direct_connect(address: String) -> CommandResult<DirectConn
         trust: DirectConnectTrust::ByondOnly,
         verified_domain: None,
         server_name: None,
+        server_description: None,
+        server_region: None,
+        players: None,
+        player_cap: None,
+        map_name: None,
+        status: None,
+        tags: Vec::new(),
     })
 }
 
@@ -1162,7 +1291,9 @@ pub async fn connect_to_address(
     let server_id = if let Some(id) = server_id {
         Some(id)
     } else {
-        let info = resolve_direct_connect(address.clone()).await.ok();
+        let info = resolve_direct_connect(app.clone(), address.clone())
+            .await
+            .ok();
         info.and_then(|i| i.server_id)
     };
 

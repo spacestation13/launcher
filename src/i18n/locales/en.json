@@ -183,7 +183,10 @@
     "selfReportedWarning": "This server claims to support hub authentication, but its identity has not been verified.",
     "selfReportedDetail": "Your auth credentials will be sent to this server. Only continue if you trust this address.",
     "byondOnlyInfo": "This server does not support hub authentication. You will connect with BYOND login only.",
-    "rememberTrust": "Don't ask again for this address"
+    "rememberTrust": "Don't ask again for this address",
+    "selfReportedLabel": "Self-reported",
+    "playersCount": "{{count}} players",
+    "playersCountWithCap": "{{count}}/{{cap}} players"
   },
   "relay": {
     "label": "Relay:",
