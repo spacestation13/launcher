@@ -66,9 +66,9 @@ export const ServerItem = ({
   const notificationsEnabled = useSettingsStore((s) => s.notificationServers.has(server.id));
   const toggleServerNotifications = useSettingsStore((s) => s.toggleServerNotifications);
   const isFavorited = useSettingsStore((s) =>
-    server.id ? s.favoriteServers.has(server.id) : false,
+    server.id ? s.isServerFavorited(server.id) : false,
   );
-  const toggleFavorite = useSettingsStore((s) => s.toggleFavoriteServer);
+  const toggleFavorite = useSettingsStore((s) => s.toggleFavorite);
 
   const handleHubStatusClick = (e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
@@ -396,7 +396,7 @@ export const ServerItem = ({
                 <button
                   type="button"
                   className={`notify-toggle favorite-toggle ${isFavorited ? "favorited" : ""}`}
-                  onClick={() => toggleFavorite(server.id!, !isFavorited)}
+                  onClick={() => toggleFavorite({ type: "server", id: server.id! }, !isFavorited)}
                   title={isFavorited ? t("servers.unfavorite") : t("servers.favorite")}
                 >
                   <FontAwesomeIcon icon={faStar} />

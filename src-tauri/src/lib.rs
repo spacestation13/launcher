@@ -50,7 +50,7 @@ use server_ping::get_server_pings;
 use servers::{get_announcements, get_servers};
 use settings::{
     get_settings, set_accepted_tos_server, set_auth_mode, set_locale, set_rendering_pipeline,
-    set_rich_presence, set_theme, set_whitelisted_server, toggle_favorite_server,
+    set_rich_presence, set_theme, set_whitelisted_server, toggle_favorite,
     toggle_server_notifications, trust_direct_connect_address,
 };
 use singleplayer::{
@@ -283,7 +283,7 @@ pub fn build_specta() -> tauri_specta::Builder<tauri::Wry> {
         toggle_server_notifications,
         set_rendering_pipeline,
         set_rich_presence,
-        toggle_favorite_server,
+        toggle_favorite,
         trust_direct_connect_address,
         set_whitelisted_server,
         set_accepted_tos_server,

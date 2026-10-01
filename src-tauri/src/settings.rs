@@ -46,6 +46,18 @@ pub enum RenderingPipeline {
     Wined3d,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Favorite {
+    Server {
+        id: String,
+    },
+    Address {
+        address: String,
+        name: Option<String>,
+    },
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct AppSettings {
     #[serde(default, deserialize_with = "deserialize_with_default")]
@@ -59,7 +71,7 @@ pub struct AppSettings {
     #[serde(default, deserialize_with = "deserialize_with_default")]
     pub rendering_pipeline: RenderingPipeline,
     #[serde(default)]
-    pub favorite_servers: HashSet<String>,
+    pub favorites: Vec<Favorite>,
     #[serde(default)]
     pub trusted_direct_connect_addresses: HashSet<String>,
     #[serde(default = "default_true")]
@@ -105,7 +117,7 @@ impl Default for AppSettings {
             notification_servers: HashSet::new(),
             locale: None,
             rendering_pipeline: RenderingPipeline::default(),
-            favorite_servers: HashSet::new(),
+            favorites: Vec::new(),
             trusted_direct_connect_addresses: HashSet::new(),
             rich_presence_enabled: true,
             whitelisted_servers: HashSet::new(),
@@ -231,16 +243,18 @@ pub async fn set_rendering_pipeline(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn toggle_favorite_server(
+pub async fn toggle_favorite(
     app: AppHandle,
-    server_id: String,
+    favorite: Favorite,
     favorited: bool,
 ) -> CommandResult<AppSettings> {
     let mut settings = load_settings(&app)?;
     if favorited {
-        settings.favorite_servers.insert(server_id);
+        if !settings.favorites.contains(&favorite) {
+            settings.favorites.push(favorite);
+        }
     } else {
-        settings.favorite_servers.remove(&server_id);
+        settings.favorites.retain(|f| f != &favorite);
     }
     save_settings(&app, &settings)?;
     Ok(settings)

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Server } from "../bindings";
+import type { Favorite, Server } from "../bindings";
 import { useConnect } from "../hooks";
 import { useSettingsStore } from "../stores";
 import { useUiStateStore, RecentConnection } from "../stores/uiStateStore";
@@ -40,10 +40,39 @@ function RecentAddressItem({ connection }: { connection: RecentConnection }) {
   );
 }
 
+function FavoriteAddressItem({ favorite }: { favorite: Extract<Favorite, { type: "address" }> }) {
+  const { t } = useTranslation();
+  const { connectToAddress } = useConnect();
+
+  const handleConnect = async () => {
+    await connectToAddress(favorite.address, "HomePage.FavoriteAddress");
+  };
+
+  return (
+    <div className="server-item">
+      <div className="server-item-row">
+        <div className="server-info">
+          <div className="server-name">{favorite.name ?? favorite.address}</div>
+          {favorite.name && (
+            <div className="server-details">
+              <div className="detail-line">{favorite.address}</div>
+            </div>
+          )}
+        </div>
+        <div className="server-actions">
+          <button type="button" className="button" onClick={handleConnect}>
+            {t("common.connect")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const HomePage = ({ servers }: HomePageProps) => {
   const { t } = useTranslation();
   const recentConnections = useUiStateStore((s) => s.recentConnections);
-  const favoriteServers = useSettingsStore((s) => s.favoriteServers);
+  const favorites = useSettingsStore((s) => s.favorites);
 
   const recentItems = useMemo(() => {
     return recentConnections.map((conn) => {
@@ -54,12 +83,17 @@ export const HomePage = ({ servers }: HomePageProps) => {
     });
   }, [servers, recentConnections]);
 
-  const favorites = useMemo(
-    () => servers.filter((s) => s.id && favoriteServers.has(s.id)),
-    [servers, favoriteServers],
-  );
+  const favoriteItems = useMemo(() => {
+    return favorites.map((fav) => {
+      if (fav.type === "server") {
+        const server = servers.find((s) => s.id === fav.id);
+        return { favorite: fav, server };
+      }
+      return { favorite: fav, server: undefined };
+    });
+  }, [servers, favorites]);
 
-  const hasContent = recentItems.length > 0 || favorites.length > 0;
+  const hasContent = recentItems.length > 0 || favoriteItems.length > 0;
 
   return (
     <div className="home-page">
@@ -77,13 +111,17 @@ export const HomePage = ({ servers }: HomePageProps) => {
           </div>
         </div>
       )}
-      {favorites.length > 0 && (
+      {favoriteItems.length > 0 && (
         <div className="home-section">
           <div className="home-section-title">{t("home.favorites")}</div>
           <div className="server-list home-server-list">
-            {favorites.map((server) => (
-              <ServerItem key={server.url} server={server} />
-            ))}
+            {favoriteItems.map(({ favorite, server }) =>
+              server ? (
+                <ServerItem key={server.id} server={server} />
+              ) : favorite.type === "address" ? (
+                <FavoriteAddressItem key={favorite.address} favorite={favorite} />
+              ) : null,
+            )}
           </div>
         </div>
       )}

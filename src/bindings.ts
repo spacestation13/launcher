@@ -243,9 +243,9 @@ async setRichPresence(enabled: boolean) : Promise<Result<AppSettings, CommandErr
     else return { status: "error", error: e  as any };
 }
 },
-async toggleFavoriteServer(serverId: string, favorited: boolean) : Promise<Result<AppSettings, CommandError>> {
+async toggleFavorite(favorite: Favorite, favorited: boolean) : Promise<Result<AppSettings, CommandError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("toggle_favorite_server", { serverId, favorited }) };
+    return { status: "ok", data: await TAURI_INVOKE("toggle_favorite", { favorite, favorited }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -543,7 +543,7 @@ async getInitialDeepLinks() : Promise<string[]> {
 
 /** user-defined types **/
 
-export type AppSettings = { auth_mode?: AuthMode; theme?: Theme; notification_servers?: string[]; locale?: string | null; rendering_pipeline?: RenderingPipeline; favorite_servers?: string[]; trusted_direct_connect_addresses?: string[]; rich_presence_enabled?: boolean; whitelisted_servers?: string[]; accepted_tos_servers?: string[] }
+export type AppSettings = { auth_mode?: AuthMode; theme?: Theme; notification_servers?: string[]; locale?: string | null; rendering_pipeline?: RenderingPipeline; favorites?: Favorite[]; trusted_direct_connect_addresses?: string[]; rich_presence_enabled?: boolean; whitelisted_servers?: string[]; accepted_tos_servers?: string[] }
 export type AuthError = { code: string; message: string; linking_url: string | null }
 export type AuthMode = "oidc" | "hub" | "byond" | "steam"
 export type AuthState = { logged_in: boolean; user: UserInfo | null; loading: boolean; error: string | null }
@@ -558,6 +558,7 @@ export type ConnectionResult = { success: boolean; message: string; auth_error: 
 export type DirectConnectInfo = { hostname: string; port: number; server_id: string | null; trust: DirectConnectTrust; verified_domain?: string | null; server_name?: string | null; server_description?: string | null; server_region?: string | null; players?: number | null; player_cap?: number | null; map_name?: string | null; status?: string | null; tags?: string[] }
 export type DirectConnectTrust = "HubVerified" | "HubKnown" | "DomainAttested" | "SelfReported" | "ByondOnly" | "Unreachable"
 export type EngineRequirements = { min_version?: string | null; max_version?: string | null; blacklisted_versions?: string[] }
+export type Favorite = { type: "server"; id: string } | { type: "address"; address: string; name: string | null }
 export type HubAnnouncement = { id: string; title: string; body: string; kind: string; active_until?: string | null; active_from: string }
 export type LauncherConfig = { variant: string; product_name: string; logo: string; default_theme: string; app_identifier: string; default_byond_version: string | null; server_api: ServerApiType; features: LauncherFeatures; urls: LauncherUrls; strings: LauncherStrings; singleplayer: SingleplayerConfig; oidc: OidcConfig | null; social_links: SocialLink[] }
 export type LauncherFeatures = { relay_selector: boolean; singleplayer: boolean; server_search: boolean; server_filters: boolean; show_offline_servers: boolean; server_stats: boolean; auto_launch_byond: boolean; connection_timeout_fallback: boolean; connect_logo: boolean; favorites: boolean; direct_connect: boolean; control_server_key: boolean }

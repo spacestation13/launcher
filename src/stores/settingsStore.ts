@@ -3,6 +3,7 @@ import { create } from "zustand";
 import {
   type AppSettings,
   type AuthMode,
+  type Favorite,
   type RenderingPipeline,
   commands,
   type Theme,
@@ -18,7 +19,7 @@ interface SettingsStore {
   notificationServers: Set<string>;
   locale: string | null;
   renderingPipeline: RenderingPipeline;
-  favoriteServers: Set<string>;
+  favorites: Favorite[];
   trustedAddresses: Set<string>;
   whitelistedServers: Set<string>;
   acceptedTosServers: Set<string>;
@@ -33,7 +34,8 @@ interface SettingsStore {
   saveRenderingPipeline: (pipeline: RenderingPipeline) => Promise<void>;
   toggleServerNotifications: (serverId: string, enabled: boolean) => Promise<void>;
   isServerNotificationsEnabled: (serverId: string) => boolean;
-  toggleFavoriteServer: (serverId: string, favorited: boolean) => Promise<void>;
+  toggleFavorite: (favorite: Favorite, favorited: boolean) => Promise<void>;
+  isFavorited: (favorite: Favorite) => boolean;
   isServerFavorited: (serverId: string) => boolean;
   trustDirectConnectAddress: (address: string) => Promise<void>;
   isAddressTrusted: (address: string) => boolean;
@@ -44,6 +46,14 @@ interface SettingsStore {
   saveRichPresence: (enabled: boolean) => Promise<void>;
 }
 
+function favoritesMatch(a: Favorite, b: Favorite): boolean {
+  if (a.type !== b.type) return false;
+  if (a.type === "server" && b.type === "server") return a.id === b.id;
+  if (a.type === "address" && b.type === "address")
+    return a.address.toLowerCase() === b.address.toLowerCase();
+  return false;
+}
+
 export const useSettingsStore = create<SettingsStore>()((set, get) => ({
   loaded: false,
   authMode: "oidc",
@@ -52,7 +62,7 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
   notificationServers: new Set<string>(),
   locale: null,
   renderingPipeline: "dxvk",
-  favoriteServers: new Set<string>(),
+  favorites: [],
   trustedAddresses: new Set<string>(),
   richPresenceEnabled: true,
   whitelistedServers: new Set<string>(),
@@ -75,7 +85,7 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
         notificationServers: new Set(settings.notification_servers ?? []),
         locale: settings.locale ?? null,
         renderingPipeline: settings.rendering_pipeline ?? "dxvk",
-        favoriteServers: new Set(settings.favorite_servers ?? []),
+        favorites: settings.favorites ?? [],
         trustedAddresses: new Set(settings.trusted_direct_connect_addresses ?? []),
         richPresenceEnabled: settings.rich_presence_enabled ?? true,
         whitelistedServers: new Set(settings.whitelisted_servers ?? []),
@@ -121,13 +131,17 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
     return get().notificationServers.has(serverId);
   },
 
-  toggleFavoriteServer: async (serverId: string, favorited: boolean) => {
-    const settings = unwrap(await commands.toggleFavoriteServer(serverId, favorited));
-    set({ favoriteServers: new Set(settings.favorite_servers ?? []) });
+  toggleFavorite: async (favorite: Favorite, favorited: boolean) => {
+    const settings = unwrap(await commands.toggleFavorite(favorite, favorited));
+    set({ favorites: settings.favorites ?? [] });
+  },
+
+  isFavorited: (favorite: Favorite) => {
+    return get().favorites.some((f) => favoritesMatch(f, favorite));
   },
 
   isServerFavorited: (serverId: string) => {
-    return get().favoriteServers.has(serverId);
+    return get().favorites.some((f) => f.type === "server" && f.id === serverId);
   },
 
   trustDirectConnectAddress: async (address: string) => {
