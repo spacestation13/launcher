@@ -17,7 +17,7 @@ interface RecentConnection {
   serverName: string | null;
 }
 
-const MAX_RECENT_CONNECTIONS = 3;
+const MAX_RECENT_CONNECTIONS = 20;
 
 type UiState = {
   [key: string]: unknown;
@@ -56,9 +56,7 @@ export const useUiStateStore = create<UiState & UiStateActions>()((set, get) => 
   addRecentConnection: (connection) => {
     const existing = get().recentConnections;
     const deduped = existing.filter(
-      (c) =>
-        c.address.toLowerCase() !== connection.address.toLowerCase() &&
-        !(connection.serverId && c.serverId === connection.serverId),
+      (c) => c.address.toLowerCase() !== connection.address.toLowerCase(),
     );
     set({
       recentConnections: [connection, ...deduped].slice(0, MAX_RECENT_CONNECTIONS),

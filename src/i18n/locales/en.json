@@ -20,7 +20,9 @@
     "tryAgain": "Try Again",
     "createAccount": "Create Account",
     "accept": "Accept",
-    "decline": "Decline"
+    "decline": "Decline",
+    "showMore": "Show more ({{count}})",
+    "showLess": "Show less"
   },
   "errors": {
     "network": "Network error: {{detail}}",
