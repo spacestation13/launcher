@@ -1,11 +1,11 @@
-import { faStar } from "@fortawesome/free-solid-svg-icons";
+import { faStar, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Favorite, Server } from "../bindings";
 import { useConnect } from "../hooks";
-import { useSettingsStore } from "../stores";
+import { useConfigStore, useSettingsStore } from "../stores";
 import { useUiStateStore, RecentConnection } from "../stores/uiStateStore";
 import { ServerItem } from "./ServerItem";
 
@@ -24,10 +24,13 @@ function RecentConnectionItem({
 }) {
   const { t } = useTranslation();
   const { connectToAddress } = useConnect();
+  const config = useConfigStore((s) => s.config);
   const toggleFavorite = useSettingsStore((s) => s.toggleFavorite);
   const isFavorited = useSettingsStore((s) =>
     s.isFavorited({ type: "address", address: connection.address, name: null }),
   );
+
+  const supportsHub = server?.auth_methods?.includes("hub") ?? false;
 
   const handleConnect = async () => {
     await connectToAddress(
@@ -54,21 +57,35 @@ function RecentConnectionItem({
       <div className="server-item-row">
         <div className="server-info">
           <div className="server-name">{displayName}</div>
-          <div className="server-details">
-            <div className="detail-line">
-              {showAddress && <span>{connection.address}</span>}
-              {server?.data && showAddress && <span>{" · "}</span>}
-              {server?.data && (
-                <span>
-                  {t("directConnect.playersCount", { count: server.data.players })}
-                </span>
-              )}
+          {showAddress && (
+            <div className="server-details">
+              <div className="detail-line">
+                <span>{connection.address}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        {server?.players != null && (
+          <div className="server-status">
+            <div className="server-counts">
+              <div className="player-count">
+                <FontAwesomeIcon icon={faUsers} className="player-icon" />
+                {server.players}
+                {server.data?.popcap != null && `/${server.data.popcap}`}
+              </div>
             </div>
           </div>
-        </div>
+        )}
         <div className="connect-group">
           <button type="button" className="button connect-button" onClick={handleConnect}>
-            {t("common.connect")}
+            {config?.features.connect_logo && (
+              <img
+                src={supportsHub ? "/logo-ss13.png" : "/byond.png"}
+                alt=""
+                className="connect-auth-icon"
+              />
+            )}
+            {t("common.join")}
           </button>
           <button
             type="button"
@@ -87,9 +104,14 @@ function RecentConnectionItem({
 function FavoriteAddressItem({ favorite }: { favorite: Extract<Favorite, { type: "address" }> }) {
   const { t } = useTranslation();
   const { connectToAddress } = useConnect();
+  const toggleFavorite = useSettingsStore((s) => s.toggleFavorite);
 
   const handleConnect = async () => {
     await connectToAddress(favorite.address, "HomePage.FavoriteAddress");
+  };
+
+  const handleUnfavorite = () => {
+    toggleFavorite(favorite, false);
   };
 
   return (
@@ -105,7 +127,15 @@ function FavoriteAddressItem({ favorite }: { favorite: Extract<Favorite, { type:
         </div>
         <div className="connect-group">
           <button type="button" className="button connect-button" onClick={handleConnect}>
-            {t("common.connect")}
+            {t("common.join")}
+          </button>
+          <button
+            type="button"
+            className="notify-toggle favorite-toggle favorited"
+            onClick={handleUnfavorite}
+            title={t("servers.unfavorite")}
+          >
+            <FontAwesomeIcon icon={faStar} />
           </button>
         </div>
       </div>
