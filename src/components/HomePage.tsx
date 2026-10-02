@@ -176,6 +176,20 @@ export const HomePage = ({ servers }: HomePageProps) => {
 
   return (
     <div className="home-page">
+      {favoriteItems.length > 0 && (
+        <div className="home-section">
+          <div className="home-section-title">{t("home.favorites")}</div>
+          <div className="server-list home-server-list">
+            {favoriteItems.map(({ favorite, server }) =>
+              server ? (
+                <ServerItem key={server.id} server={server} />
+              ) : favorite.type === "address" ? (
+                <FavoriteAddressItem key={favorite.address} favorite={favorite} />
+              ) : null,
+            )}
+          </div>
+        </div>
+      )}
       {recentItems.length > 0 && (
         <div className="home-section">
           <div className="home-section-title">{t("home.continuePlaying")}</div>
@@ -200,20 +214,6 @@ export const HomePage = ({ servers }: HomePageProps) => {
                 : t("common.showMore", { count: recentItems.length - RECENT_VISIBLE_DEFAULT })}
             </button>
           )}
-        </div>
-      )}
-      {favoriteItems.length > 0 && (
-        <div className="home-section">
-          <div className="home-section-title">{t("home.favorites")}</div>
-          <div className="server-list home-server-list">
-            {favoriteItems.map(({ favorite, server }) =>
-              server ? (
-                <ServerItem key={server.id} server={server} />
-              ) : favorite.type === "address" ? (
-                <FavoriteAddressItem key={favorite.address} favorite={favorite} />
-              ) : null,
-            )}
-          </div>
         </div>
       )}
       {!hasContent && <div className="home-empty">{t("home.noFavorites")}</div>}
