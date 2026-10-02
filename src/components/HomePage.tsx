@@ -1,3 +1,5 @@
+import { faStar } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -22,6 +24,10 @@ function RecentConnectionItem({
 }) {
   const { t } = useTranslation();
   const { connectToAddress } = useConnect();
+  const toggleFavorite = useSettingsStore((s) => s.toggleFavorite);
+  const isFavorited = useSettingsStore((s) =>
+    s.isFavorited({ type: "address", address: connection.address, name: null }),
+  );
 
   const handleConnect = async () => {
     await connectToAddress(
@@ -29,6 +35,15 @@ function RecentConnectionItem({
       "HomePage.RecentConnection",
       connection.serverId ?? undefined,
     );
+  };
+
+  const handleToggleFavorite = () => {
+    const fav: Favorite = {
+      type: "address",
+      address: connection.address,
+      name: server?.name ?? connection.serverName ?? null,
+    };
+    toggleFavorite(fav, !isFavorited);
   };
 
   const displayName = server?.name ?? connection.serverName ?? connection.address;
@@ -45,15 +60,23 @@ function RecentConnectionItem({
               {server?.data && showAddress && <span>{" · "}</span>}
               {server?.data && (
                 <span>
-                  {server.data.players} {t("directConnect.playersCount", { count: server.data.players })}
+                  {t("directConnect.playersCount", { count: server.data.players })}
                 </span>
               )}
             </div>
           </div>
         </div>
-        <div className="server-actions">
-          <button type="button" className="button" onClick={handleConnect}>
+        <div className="connect-group">
+          <button type="button" className="button connect-button" onClick={handleConnect}>
             {t("common.connect")}
+          </button>
+          <button
+            type="button"
+            className={`notify-toggle favorite-toggle ${isFavorited ? "favorited" : ""}`}
+            onClick={handleToggleFavorite}
+            title={isFavorited ? t("servers.unfavorite") : t("servers.favorite")}
+          >
+            <FontAwesomeIcon icon={faStar} />
           </button>
         </div>
       </div>
@@ -80,8 +103,8 @@ function FavoriteAddressItem({ favorite }: { favorite: Extract<Favorite, { type:
             </div>
           )}
         </div>
-        <div className="server-actions">
-          <button type="button" className="button" onClick={handleConnect}>
+        <div className="connect-group">
+          <button type="button" className="button connect-button" onClick={handleConnect}>
             {t("common.connect")}
           </button>
         </div>
