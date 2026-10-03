@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { Favorite, Server } from "../bindings";
 import { useConnect } from "../hooks";
 import { useConfigStore, useSettingsStore } from "../stores";
-import { useUiStateStore, RecentConnection } from "../stores/uiStateStore";
+import { useUiStateStore } from "../stores/uiStateStore";
 import { ServerItem } from "./ServerItem";
 
 const RECENT_VISIBLE_DEFAULT = 3;
@@ -15,42 +15,42 @@ interface HomePageProps {
   servers: Server[];
 }
 
-function RecentConnectionItem({
-  connection,
+function AddressServerItem({
+  address,
+  displayName,
   server,
+  serverId,
 }: {
-  connection: RecentConnection;
+  address: string;
+  displayName: string;
   server?: Server;
+  serverId?: string;
 }) {
   const { t } = useTranslation();
   const { connectToAddress } = useConnect();
   const config = useConfigStore((s) => s.config);
   const toggleFavorite = useSettingsStore((s) => s.toggleFavorite);
   const isFavorited = useSettingsStore((s) =>
-    s.isFavorited({ type: "address", address: connection.address, name: null }),
+    s.isFavorited({ type: "address", address, name: null }),
   );
 
   const supportsHub = server?.auth_methods?.includes("hub") ?? false;
 
   const handleConnect = async () => {
-    await connectToAddress(
-      connection.address,
-      "HomePage.RecentConnection",
-      connection.serverId ?? undefined,
-    );
+    await connectToAddress(address, "HomePage.AddressServerItem", serverId);
   };
 
   const handleToggleFavorite = () => {
     const fav: Favorite = {
       type: "address",
-      address: connection.address,
-      name: server?.name ?? connection.serverName ?? null,
+      address,
+      name: server?.name ?? (displayName !== address ? displayName : null),
+      server_id: serverId ?? server?.id ?? null,
     };
     toggleFavorite(fav, !isFavorited);
   };
 
-  const displayName = server?.name ?? connection.serverName ?? connection.address;
-  const showAddress = displayName !== connection.address;
+  const showAddress = displayName !== address;
 
   return (
     <div className="server-item">
@@ -60,7 +60,7 @@ function RecentConnectionItem({
           {showAddress && (
             <div className="server-details">
               <div className="detail-line">
-                <span>{connection.address}</span>
+                <span>{address}</span>
               </div>
             </div>
           )}
@@ -101,61 +101,20 @@ function RecentConnectionItem({
   );
 }
 
-function FavoriteAddressItem({ favorite }: { favorite: Extract<Favorite, { type: "address" }> }) {
-  const { t } = useTranslation();
-  const { connectToAddress } = useConnect();
-  const toggleFavorite = useSettingsStore((s) => s.toggleFavorite);
-
-  const handleConnect = async () => {
-    await connectToAddress(favorite.address, "HomePage.FavoriteAddress");
-  };
-
-  const handleUnfavorite = () => {
-    toggleFavorite(favorite, false);
-  };
-
-  return (
-    <div className="server-item">
-      <div className="server-item-row">
-        <div className="server-info">
-          <div className="server-name">{favorite.name ?? favorite.address}</div>
-          {favorite.name && (
-            <div className="server-details">
-              <div className="detail-line">{favorite.address}</div>
-            </div>
-          )}
-        </div>
-        <div className="connect-group">
-          <button type="button" className="button connect-button" onClick={handleConnect}>
-            {t("common.join")}
-          </button>
-          <button
-            type="button"
-            className="notify-toggle favorite-toggle favorited"
-            onClick={handleUnfavorite}
-            title={t("servers.unfavorite")}
-          >
-            <FontAwesomeIcon icon={faStar} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export const HomePage = ({ servers }: HomePageProps) => {
   const { t } = useTranslation();
   const recentConnections = useUiStateStore((s) => s.recentConnections);
   const favorites = useSettingsStore((s) => s.favorites);
   const [showAllRecent, setShowAllRecent] = useState(false);
 
+  const findServer = (serverId?: string | null) =>
+    serverId ? servers.find((s) => s.id === serverId) : undefined;
+
   const recentItems = useMemo(() => {
-    return recentConnections.map((conn) => {
-      const server = conn.serverId
-        ? servers.find((s) => s.id === conn.serverId)
-        : undefined;
-      return { connection: conn, server };
-    });
+    return recentConnections.map((conn) => ({
+      connection: conn,
+      server: findServer(conn.serverId),
+    }));
   }, [servers, recentConnections]);
 
   const visibleRecent = showAllRecent
@@ -165,10 +124,9 @@ export const HomePage = ({ servers }: HomePageProps) => {
   const favoriteItems = useMemo(() => {
     return favorites.map((fav) => {
       if (fav.type === "server") {
-        const server = servers.find((s) => s.id === fav.id);
-        return { favorite: fav, server };
+        return { favorite: fav, server: findServer(fav.id) };
       }
-      return { favorite: fav, server: undefined };
+      return { favorite: fav, server: findServer(fav.server_id) };
     });
   }, [servers, favorites]);
 
@@ -181,10 +139,16 @@ export const HomePage = ({ servers }: HomePageProps) => {
           <div className="home-section-title">{t("home.favorites")}</div>
           <div className="server-list home-server-list">
             {favoriteItems.map(({ favorite, server }) =>
-              server ? (
+              server && favorite.type === "server" ? (
                 <ServerItem key={server.id} server={server} />
               ) : favorite.type === "address" ? (
-                <FavoriteAddressItem key={favorite.address} favorite={favorite} />
+                <AddressServerItem
+                  key={favorite.address}
+                  address={favorite.address}
+                  displayName={favorite.name ?? favorite.address}
+                  server={server}
+                  serverId={favorite.server_id ?? undefined}
+                />
               ) : null,
             )}
           </div>
@@ -195,10 +159,12 @@ export const HomePage = ({ servers }: HomePageProps) => {
           <div className="home-section-title">{t("home.continuePlaying")}</div>
           <div className="server-list home-server-list">
             {visibleRecent.map(({ connection, server }) => (
-              <RecentConnectionItem
+              <AddressServerItem
                 key={connection.address}
-                connection={connection}
+                address={connection.address}
+                displayName={server?.name ?? connection.serverName ?? connection.address}
                 server={server}
+                serverId={connection.serverId ?? undefined}
               />
             ))}
           </div>

@@ -46,7 +46,7 @@ pub enum RenderingPipeline {
     Wined3d,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Favorite {
     Server {
@@ -55,7 +55,21 @@ pub enum Favorite {
     Address {
         address: String,
         name: Option<String>,
+        #[serde(default)]
+        server_id: Option<String>,
     },
+}
+
+impl Favorite {
+    fn same_target(&self, other: &Favorite) -> bool {
+        match (self, other) {
+            (Favorite::Server { id: a }, Favorite::Server { id: b }) => a == b,
+            (Favorite::Address { address: a, .. }, Favorite::Address { address: b, .. }) => {
+                a.eq_ignore_ascii_case(b)
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -250,11 +264,11 @@ pub async fn toggle_favorite(
 ) -> CommandResult<AppSettings> {
     let mut settings = load_settings(&app)?;
     if favorited {
-        if !settings.favorites.contains(&favorite) {
+        if !settings.favorites.iter().any(|f| f.same_target(&favorite)) {
             settings.favorites.push(favorite);
         }
     } else {
-        settings.favorites.retain(|f| f != &favorite);
+        settings.favorites.retain(|f| !f.same_target(&favorite));
     }
     save_settings(&app, &settings)?;
     Ok(settings)
