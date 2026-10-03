@@ -3,5 +3,3 @@ name = "launcher-hwid"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-ss13-hwid = { git = "ssh://git@github.com/spacestation13/ss13hwid.git", branch = "main" }
