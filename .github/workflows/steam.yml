@@ -115,7 +115,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path steam-build/windows
           Copy-Item "src-tauri/target/release/SS13_Launcher.exe" -Destination "steam-build/windows/${{ matrix.exe-rename }}"
           Copy-Item "src-tauri/resources/steam_api64.dll" -Destination "steam-build/windows/"
-          Copy-Item "src-tauri/webview2-runtime" -Destination "steam-build/windows/webview2-runtime" -Recurse
+
+          New-Item -ItemType Directory -Force -Path steam-build/windows-webview2
+          Copy-Item "src-tauri/webview2-runtime" -Destination "steam-build/windows-webview2/webview2-runtime" -Recurse
 
       - name: Scan with Windows Defender
         if: runner.os == 'Windows'
@@ -133,6 +135,14 @@ jobs:
           path: steam-build/windows/
           retention-days: 1
 
+      - name: Upload Windows WebView2 runtime
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-steam-${{ matrix.variant }}-windows-webview2
+          path: steam-build/windows-webview2/
+          retention-days: 1
+
       - name: Extract AppImage and prepare artifacts
         if: runner.os == 'Linux'
         run: |
@@ -146,7 +156,9 @@ jobs:
           rm -rf steam-build/linux/share/ri
 
           cp src-tauri/resources/libsteam_api.so steam-build/linux/shared/lib/
-          cp -r src-tauri/webview2-runtime steam-build/linux/webview2-runtime
+
+          mkdir -p steam-build/linux-webview2
+          cp -r src-tauri/webview2-runtime steam-build/linux-webview2/webview2-runtime
 
           # Patch WebKit helper binaries to use bundled ld-linux and libraries
           _tmp_lib=$(grep '_tmp_lib=' steam-build/linux/bin/01-path-mapping-hardcoded.hook | cut -d'=' -f2 | tr -d '"')
@@ -164,6 +176,14 @@ jobs:
         with:
           name: build-steam-${{ matrix.variant }}-linux
           path: steam-build/linux/
+          retention-days: 1
+
+      - name: Upload Linux WebView2 runtime
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-steam-${{ matrix.variant }}-linux-webview2
+          path: steam-build/linux-webview2/
           retention-days: 1
 
   deploy-cm:

@@ -37,11 +37,23 @@ runs:
         name: build-steam-${{ inputs.variant }}-windows
         path: build/windows
 
+    - name: Download Windows WebView2 runtime
+      uses: actions/download-artifact@v8
+      with:
+        name: build-steam-${{ inputs.variant }}-windows-webview2
+        path: build/windows-webview2
+
     - name: Download Linux build
       uses: actions/download-artifact@v8
       with:
         name: build-steam-${{ inputs.variant }}-linux
         path: build/linux
+
+    - name: Download Linux WebView2 runtime
+      uses: actions/download-artifact@v8
+      with:
+        name: build-steam-${{ inputs.variant }}-linux-webview2
+        path: build/linux-webview2
 
     - name: Get version from Cargo.toml
       id: version
@@ -61,4 +73,6 @@ runs:
         rootPath: build
         depot1Path: windows
         depot2Path: linux
+        depot3Path: windows-webview2
+        depot4Path: linux-webview2
         releaseBranch: ${{ inputs.steam_branch }}
