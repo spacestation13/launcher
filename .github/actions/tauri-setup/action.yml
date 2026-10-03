@@ -92,7 +92,6 @@ runs:
         cp src-tauri/winetricks "/tmp/lib/${{ inputs.sidecar-app-name }}/"
         cp src-tauri/cabextract "/tmp/lib/${{ inputs.sidecar-app-name }}/"
         chmod +x "/tmp/lib/${{ inputs.sidecar-app-name }}/winetricks" "/tmp/lib/${{ inputs.sidecar-app-name }}/cabextract"
-        cp -r src-tauri/webview2-runtime "/tmp/lib/${{ inputs.sidecar-app-name }}/webview2-runtime"
 
     - name: Install frontend dependencies
       shell: bash
