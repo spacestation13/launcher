@@ -16,21 +16,26 @@ jobs:
     name: Generate HWID keypair
     runs-on: ubuntu-latest
     outputs:
-      signing-key: ${{ steps.keygen.outputs.signing-key }}
+      signing-key: ${{ steps.encrypt.outputs.out }}
       public-key: ${{ steps.keygen.outputs.public-key }}
     steps:
       - name: Generate ed25519 keypair
         id: keygen
-        env:
-          PASSPHRASE: ${{ secrets.HUB_DEPLOY_TOKEN }}
         run: |
           openssl genpkey -algorithm ed25519 -outform DER -out hwid-key-full.der
           SIGNING_KEY=$(tail -c 32 hwid-key-full.der | base64 -w0)
           PUBLIC_KEY=$(openssl pkey -in hwid-key-full.der -inform DER -pubout -outform DER | tail -c 32 | base64 -w0)
           rm hwid-key-full.der
-          ENCRYPTED=$(echo -n "$SIGNING_KEY" | openssl enc -aes-256-cbc -pbkdf2 -a -pass "pass:$PASSPHRASE")
-          echo "signing-key=$ENCRYPTED" >> "$GITHUB_OUTPUT"
+          echo "signing-key=$SIGNING_KEY" >> "$GITHUB_OUTPUT"
           echo "public-key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Encrypt signing key for cross-job transport
+        id: encrypt
+        uses: cloudposse/github-action-secret-outputs@0.1.2
+        with:
+          op: encode
+          in: ${{ steps.keygen.outputs.signing-key }}
+          secret: ${{ secrets.HUB_DEPLOY_TOKEN }}
 
 
   build-steam:
@@ -70,15 +75,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Decrypt HWID signing key
+        if: contains(matrix.features, 'hwid')
+        id: decrypt-key
+        uses: cloudposse/github-action-secret-outputs@0.1.2
+        with:
+          op: decode
+          in: ${{ needs.generate-hwid-key.outputs.signing-key }}
+          secret: ${{ secrets.HUB_DEPLOY_TOKEN }}
+
       - name: Write HWID signing key
         if: contains(matrix.features, 'hwid')
         shell: bash
-        env:
-          PASSPHRASE: ${{ secrets.HUB_DEPLOY_TOKEN }}
         run: |
-          SIGNING_KEY=$(echo "${{ needs.generate-hwid-key.outputs.signing-key }}" | openssl enc -aes-256-cbc -pbkdf2 -d -a -pass "pass:$PASSPHRASE")
-          echo "::add-mask::$SIGNING_KEY"
-          echo -n "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
+          echo "::add-mask::${{ steps.decrypt-key.outputs.out }}"
+          echo -n "${{ steps.decrypt-key.outputs.out }}" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
           echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
 
       - name: Setup
