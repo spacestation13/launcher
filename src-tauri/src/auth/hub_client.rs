@@ -203,6 +203,7 @@ impl HubClient {
         hwid_version: u32,
         components: &[serde_json::Value],
         signature: Option<&str>,
+        variant: &str,
     ) -> Result<String, HubAuthError> {
         let client = Self::from_config()?;
 
@@ -218,6 +219,7 @@ impl HubClient {
                 "hwid_version": hwid_version,
                 "components": components,
                 "signature": signature,
+                "variant": variant,
             }))
             .send()
             .await
@@ -232,6 +234,13 @@ impl HubClient {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             tracing::error!(%url, %status, %body, "HubClient::join_complete failed");
+
+            if let Ok(err) = serde_json::from_str::<ErrorResponse>(&body) {
+                if err.error == "hwid_key_expired" {
+                    return Err(HubAuthError::HwidKeyExpired);
+                }
+            }
+
             return Err(HubAuthError::Server(format!(
                 "Join complete failed (HTTP {status}): {body}"
             )));
@@ -422,6 +431,7 @@ pub enum HubAuthError {
     Requires2FA,
     AccountLocked,
     TokenExpired,
+    HwidKeyExpired,
     NotFound,
     Network(String),
     Server(String),
@@ -435,6 +445,7 @@ impl std::fmt::Display for HubAuthError {
             Self::Requires2FA => write!(f, "2FA code required"),
             Self::AccountLocked => write!(f, "Account is locked"),
             Self::TokenExpired => write!(f, "Session expired, please log in again"),
+            Self::HwidKeyExpired => write!(f, "Launcher update required"),
             Self::NotFound => write!(f, "Not found"),
             Self::Network(msg) => write!(f, "{msg}"),
             Self::Server(msg) => write!(f, "{msg}"),

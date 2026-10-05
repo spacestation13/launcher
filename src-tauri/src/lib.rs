@@ -402,10 +402,13 @@ pub fn run() {
         }))
         .invoke_handler(specta_builder.invoke_handler());
 
-    // Only include updater for non-CM builds (CM uses Steam for updates)
-    #[cfg(not(feature = "cm_ss13"))]
+    #[cfg(not(feature = "steam"))]
     {
-        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+        builder = builder.plugin(
+            tauri_plugin_updater::Builder::new()
+                .default_version_comparator(|current, remote| current != remote.version)
+                .build(),
+        );
     }
 
     let mut manager = presence::PresenceManager::new();

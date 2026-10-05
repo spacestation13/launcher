@@ -1,0 +1,235 @@
+name: "HWID Key Rotation"
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Build variant to rotate"
+        required: true
+        type: choice
+        options:
+          - github
+          - steam
+      version:
+        description: "Version string (e.g. v2.5.0+rot.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+
+jobs:
+  generate-hwid-key:
+    name: Generate HWID keypair
+    runs-on: ubuntu-latest
+    outputs:
+      signing-key: ${{ steps.keygen.outputs.signing-key }}
+      public-key: ${{ steps.keygen.outputs.public-key }}
+    steps:
+      - name: Generate ed25519 keypair
+        id: keygen
+        run: |
+          openssl genpkey -algorithm ed25519 -outform DER -out hwid-key-full.der
+          SIGNING_KEY=$(tail -c 32 hwid-key-full.der | base64 -w0)
+          PUBLIC_KEY=$(openssl pkey -in hwid-key-full.der -inform DER -pubout -outform DER | tail -c 32 | base64 -w0)
+          rm hwid-key-full.der
+          echo "::add-mask::$SIGNING_KEY"
+          echo "signing-key=$SIGNING_KEY" >> "$GITHUB_OUTPUT"
+          echo "public-key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Register public key with hub
+        run: |
+          curl -f -X POST "${{ secrets.HUB_API_URL }}/manage/hwid-keys" \
+            -H "Authorization: Bearer ${{ secrets.HUB_DEPLOY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"public_key\": \"${{ steps.keygen.outputs.public-key }}\",
+              \"variant\": \"${{ inputs.variant }}\",
+              \"build_version\": \"${{ inputs.version }}\"
+            }"
+
+  rotate-github:
+    if: inputs.variant == 'github'
+    needs: generate-hwid-key
+    name: GitHub / ${{ matrix.platform }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "ubuntu-24.04"
+          - platform: "windows-latest"
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set rotation version
+        shell: bash
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          sed -i "s/^version = .*/version = \"${VERSION}\"/" src-tauri/Cargo.toml
+
+      - name: Write HWID signing key
+        shell: bash
+        run: |
+          SIGNING_KEY="${{ needs.generate-hwid-key.outputs.signing-key }}"
+          echo "::add-mask::$SIGNING_KEY"
+          echo -n "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
+          echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
+
+      - name: Setup
+        uses: ./.github/actions/tauri-setup
+        with:
+          cache-key: ${{ matrix.platform }}-ss13-rotation
+          ssh-deploy-key: ${{ secrets.SS13HWID_DEPLOY_KEY }}
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_BUNDLER_NEW_APPIMAGE_FORMAT: "true"
+          ADD_DIR: "/tmp/lib/SS13 Launcher"
+          SS13HWID_SIGNING_KEY_PATH: ${{ env.SS13HWID_SIGNING_KEY_PATH }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: "v${{ inputs.version }}"
+          releaseName: "v${{ inputs.version }}"
+          releaseBody: "HWID key rotation build."
+          args: --features hwid
+          updaterJsonPreferNsis: true
+          tauriScript: ${{ matrix.platform == 'ubuntu-24.04' && 'cargo tauri' || 'npx tauri' }}
+
+  rotate-steam:
+    if: inputs.variant == 'steam'
+    needs: generate-hwid-key
+    name: Steam / ${{ matrix.platform }}
+    runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [ss13, ss13-playtest]
+        platform: [windows-latest, ubuntu-24.04]
+        include:
+          - variant: ss13
+            features: "steam,hwid"
+            tauri-configs: "--config src-tauri/tauri.ss13.steam.conf.json"
+            sidecar-app-name: "SS13 Launcher"
+            exe-rename: "SS13_Launcher.exe"
+            steam-app-id: "5287320"
+            steam-app-name: "production"
+          - variant: ss13-playtest
+            features: "steam,hwid"
+            tauri-configs: "--config src-tauri/tauri.ss13.steam.conf.json"
+            sidecar-app-name: "SS13 Launcher"
+            exe-rename: "SS13_Launcher.exe"
+            steam-app-id: "5287330"
+            steam-app-name: "playtest"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set rotation version
+        shell: bash
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          sed -i "s/^version = .*/version = \"${VERSION}\"/" src-tauri/Cargo.toml
+
+      - name: Write HWID signing key
+        shell: bash
+        run: |
+          SIGNING_KEY="${{ needs.generate-hwid-key.outputs.signing-key }}"
+          echo "::add-mask::$SIGNING_KEY"
+          echo -n "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
+          echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
+
+      - name: Setup
+        uses: ./.github/actions/tauri-setup
+        with:
+          cache-key: steam-${{ matrix.variant }}-${{ runner.os }}-rotation
+          sidecar-app-name: ${{ matrix.sidecar-app-name }}
+          ssh-deploy-key: ${{ secrets.SS13HWID_DEPLOY_KEY }}
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STEAM_APP_ID: ${{ matrix.steam-app-id }}
+          STEAM_APP_NAME: ${{ matrix.steam-app-name }}
+          SS13HWID_SIGNING_KEY_PATH: ${{ env.SS13HWID_SIGNING_KEY_PATH }}
+        with:
+          args: --features ${{ matrix.features }} ${{ matrix.tauri-configs }} ${{ matrix.platform == 'ubuntu-24.04' && '--config src-tauri/tauri.linux.conf.json' || '' }}
+          tauriScript: ${{ matrix.platform == 'ubuntu-24.04' && 'cargo tauri' || 'npx tauri' }}
+
+      - name: Prepare Windows artifacts
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path steam-build/windows
+          Copy-Item "src-tauri/target/release/${{ matrix.exe-rename }}" -Destination "steam-build/windows/${{ matrix.exe-rename }}"
+
+      - name: Upload Windows build
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-steam-${{ matrix.variant }}-windows
+          path: steam-build/windows/
+          retention-days: 1
+
+      - name: Prepare Linux artifacts
+        if: runner.os == 'Linux'
+        run: |
+          APPIMAGE=$(find src-tauri/target/release/bundle -name "*.AppImage" | head -1)
+          chmod +x "$APPIMAGE"
+          "$APPIMAGE" --appimage-extract
+          mkdir -p steam-build/linux
+          cp -r AppDir/* steam-build/linux/
+
+      - name: Upload Linux build
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-steam-${{ matrix.variant }}-linux
+          path: steam-build/linux/
+          retention-days: 1
+
+  deploy-ss13-rotation:
+    if: inputs.variant == 'steam'
+    needs: rotate-steam
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Deploy SS13 to Steam staging
+        uses: ./.github/actions/steam-deploy
+        with:
+          variant: ss13
+          steam_app_id: "5287320"
+          steam_username: ${{ secrets.SS13_STEAM_USERNAME }}
+          steam_password: ${{ secrets.SS13_STEAM_PASSWORD }}
+          steam_shared_secret: ${{ secrets.SS13_STEAM_SHARED_SECRET }}
+          steam_branch: staging
+
+  deploy-ss13-playtest-rotation:
+    if: inputs.variant == 'steam'
+    needs: [rotate-steam, deploy-ss13-rotation]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Deploy SS13 Playtest to Steam staging
+        uses: ./.github/actions/steam-deploy
+        with:
+          variant: ss13-playtest
+          steam_app_id: "5287330"
+          steam_username: ${{ secrets.SS13_STEAM_USERNAME }}
+          steam_password: ${{ secrets.SS13_STEAM_PASSWORD }}
+          steam_shared_secret: ${{ secrets.SS13_STEAM_SHARED_SECRET }}
+          steam_branch: staging

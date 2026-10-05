@@ -27,6 +27,9 @@ pub enum CommandError {
     #[error("account locked")]
     AccountLocked,
 
+    #[error("launcher update required")]
+    UpdateRequired,
+
     #[error("account linking required")]
     RequiresLinking { url: String },
 

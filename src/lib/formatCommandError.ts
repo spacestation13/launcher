@@ -19,6 +19,8 @@ export function formatCommandError(err: CommandError): string {
       return t("errors.invalid_credentials");
     case "account_locked":
       return t("errors.account_locked");
+    case "update_required":
+      return t("errors.update_required", "A launcher update is required to connect. Check for updates.");
     case "requires_linking":
       return t("errors.requires_linking", { url: err.data.url });
     case "not_found":

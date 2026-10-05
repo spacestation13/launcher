@@ -12,9 +12,6 @@ inputs:
   ssh-deploy-key:
     description: "SSH private key for the HWID crate"
     required: true
-  hwid-signing-key:
-    description: "Base64-encoded HWID signing key"
-    required: true
 
 runs:
   using: "composite"
@@ -128,8 +125,9 @@ runs:
       shell: bash
       run: ./scripts/inject-hwid.sh
 
-    - name: Write HWID signing key
+    - name: Set HWID signing key path
       shell: bash
       run: |
-        echo -n "${{ inputs.hwid-signing-key }}" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
-        echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
+        if [ -f "$RUNNER_TEMP/hwid-signing-key" ]; then
+          echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
+        fi

@@ -30,14 +30,51 @@ on:
         required: false
         type: boolean
         default: false
+      hwid-variant:
+        description: "HWID variant name for key registration (e.g. github, steam). If empty, key is not registered."
+        required: false
+        type: string
+        default: ""
 
 env:
   CARGO_NET_GIT_FETCH_WITH_CLI: "true"
   TAURI_CLI_VERBOSITY: "1"
 
 jobs:
+  generate-hwid-key:
+    name: Generate HWID keypair
+    runs-on: ubuntu-latest
+    outputs:
+      signing-key: ${{ steps.keygen.outputs.signing-key }}
+      public-key: ${{ steps.keygen.outputs.public-key }}
+    steps:
+      - name: Generate ed25519 keypair
+        id: keygen
+        run: |
+          openssl genpkey -algorithm ed25519 -outform DER -out hwid-key-full.der
+          SIGNING_KEY=$(tail -c 32 hwid-key-full.der | base64 -w0)
+          PUBLIC_KEY=$(openssl pkey -in hwid-key-full.der -inform DER -pubout -outform DER | tail -c 32 | base64 -w0)
+          rm hwid-key-full.der
+          echo "::add-mask::$SIGNING_KEY"
+          echo "signing-key=$SIGNING_KEY" >> "$GITHUB_OUTPUT"
+          echo "public-key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Register public key with hub
+        if: inputs.hwid-variant != ''
+        run: |
+          VERSION=$(echo "$GITHUB_REF_NAME" | sed 's/^v//')
+          curl -f -X POST "${{ secrets.HUB_API_URL }}/manage/hwid-keys" \
+            -H "Authorization: Bearer ${{ secrets.HUB_DEPLOY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"public_key\": \"${{ steps.keygen.outputs.public-key }}\",
+              \"variant\": \"${{ inputs.hwid-variant }}\",
+              \"build_version\": \"$VERSION\"
+            }"
+
   build:
     name: ${{ matrix.platform }}
+    needs: generate-hwid-key
     permissions:
       contents: write
       issues: write
@@ -52,12 +89,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Write HWID signing key
+        shell: bash
+        run: |
+          SIGNING_KEY="${{ needs.generate-hwid-key.outputs.signing-key }}"
+          echo "::add-mask::$SIGNING_KEY"
+          echo -n "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
+          echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
+
       - name: Setup
         uses: ./.github/actions/tauri-setup
         with:
           cache-key: ${{ matrix.platform }}-${{ inputs.variant }}
           ssh-deploy-key: ${{ secrets.SS13HWID_DEPLOY_KEY }}
-          hwid-signing-key: ${{ secrets.SS13HWID_SIGNING_KEY }}
 
       - uses: tauri-apps/tauri-action@v1
         env:
