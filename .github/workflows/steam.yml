@@ -80,6 +80,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Write HWID signing key
+        if: contains(matrix.features, 'hwid')
         shell: bash
         run: |
           SIGNING_KEY="${{ needs.generate-hwid-key.outputs.signing-key }}"
