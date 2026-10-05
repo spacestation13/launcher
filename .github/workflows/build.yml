@@ -85,6 +85,7 @@ jobs:
       - name: Write HWID signing key
         shell: bash
         run: |
+          pip install cryptography -q
           SIGNING_KEY=$(echo -n "${{ needs.generate-hwid-key.outputs.signing-key }}" | python3 scripts/secret-transport.py decode "${{ secrets.HUB_DEPLOY_TOKEN }}")
           echo "::add-mask::$SIGNING_KEY"
           echo -n "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
