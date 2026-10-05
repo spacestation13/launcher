@@ -58,8 +58,8 @@ runs:
     - name: Install steamcmd
       shell: bash
       run: |
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq steamcmd
+        mkdir -p ~/steamcmd && cd ~/steamcmd
+        curl -sqL https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz | tar xz
 
     - name: Deploy to Steam
       shell: bash
@@ -70,6 +70,6 @@ runs:
           --description "v${{ steps.version.outputs.version }}" \
           --build-dir build
 
-        steamcmd +login "${{ inputs.steam_username }}" "${{ inputs.steam_password }}" "${{ steps.steam-totp.outputs.code }}" \
+        ~/steamcmd/steamcmd.sh +login "${{ inputs.steam_username }}" "${{ inputs.steam_password }}" "${{ steps.steam-totp.outputs.code }}" \
           +run_app_build "$(pwd)/build/app_build.vdf" \
           +quit
