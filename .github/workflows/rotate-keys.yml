@@ -27,9 +27,14 @@ jobs:
     name: Generate HWID keypair
     runs-on: ubuntu-latest
     outputs:
-      signing-key: ${{ steps.encrypt.outputs.out }}
+      signing-key: ${{ steps.keygen.outputs.signing-key }}
       public-key: ${{ steps.keygen.outputs.public-key }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/secret-transport.py
+          sparse-checkout-cone-mode: false
+
       - name: Generate ed25519 keypair
         id: keygen
         run: |
@@ -37,16 +42,9 @@ jobs:
           SIGNING_KEY=$(tail -c 32 hwid-key-full.der | base64 -w0)
           PUBLIC_KEY=$(openssl pkey -in hwid-key-full.der -inform DER -pubout -outform DER | tail -c 32 | base64 -w0)
           rm hwid-key-full.der
-          echo "signing-key=$SIGNING_KEY" >> "$GITHUB_OUTPUT"
+          ENCRYPTED=$(echo -n "$SIGNING_KEY" | python3 scripts/secret-transport.py encode "${{ secrets.HUB_DEPLOY_TOKEN }}")
+          echo "signing-key=$ENCRYPTED" >> "$GITHUB_OUTPUT"
           echo "public-key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
-
-      - name: Encrypt signing key for cross-job transport
-        id: encrypt
-        uses: cloudposse/github-action-secret-outputs@0.1.2
-        with:
-          op: encode
-          in: ${{ steps.keygen.outputs.signing-key }}
-          secret: ${{ secrets.HUB_DEPLOY_TOKEN }}
 
   rotate-github:
     if: inputs.variant == 'github'
@@ -71,19 +69,12 @@ jobs:
           VERSION="${VERSION#v}"
           sed -i "s/^version = .*/version = \"${VERSION}\"/" src-tauri/Cargo.toml
 
-      - name: Decrypt HWID signing key
-        id: decrypt-key
-        uses: cloudposse/github-action-secret-outputs@0.1.2
-        with:
-          op: decode
-          in: ${{ needs.generate-hwid-key.outputs.signing-key }}
-          secret: ${{ secrets.HUB_DEPLOY_TOKEN }}
-
       - name: Write HWID signing key
         shell: bash
         run: |
-          echo "::add-mask::${{ steps.decrypt-key.outputs.out }}"
-          echo -n "${{ steps.decrypt-key.outputs.out }}" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
+          SIGNING_KEY=$(echo -n "${{ needs.generate-hwid-key.outputs.signing-key }}" | python3 scripts/secret-transport.py decode "${{ secrets.HUB_DEPLOY_TOKEN }}")
+          echo "::add-mask::$SIGNING_KEY"
+          echo -n "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
           echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
 
       - name: Setup
@@ -145,19 +136,12 @@ jobs:
           VERSION="${VERSION#v}"
           sed -i "s/^version = .*/version = \"${VERSION}\"/" src-tauri/Cargo.toml
 
-      - name: Decrypt HWID signing key
-        id: decrypt-key
-        uses: cloudposse/github-action-secret-outputs@0.1.2
-        with:
-          op: decode
-          in: ${{ needs.generate-hwid-key.outputs.signing-key }}
-          secret: ${{ secrets.HUB_DEPLOY_TOKEN }}
-
       - name: Write HWID signing key
         shell: bash
         run: |
-          echo "::add-mask::${{ steps.decrypt-key.outputs.out }}"
-          echo -n "${{ steps.decrypt-key.outputs.out }}" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
+          SIGNING_KEY=$(echo -n "${{ needs.generate-hwid-key.outputs.signing-key }}" | python3 scripts/secret-transport.py decode "${{ secrets.HUB_DEPLOY_TOKEN }}")
+          echo "::add-mask::$SIGNING_KEY"
+          echo -n "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
           echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
 
       - name: Setup
