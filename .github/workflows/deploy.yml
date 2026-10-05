@@ -28,7 +28,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       variant: cm
-      features: "cm_ss13,hwid"
+      features: "cm_ss13"
       tauri-configs: "--config src-tauri/tauri.cm.conf.json"
       tarball-prefix: "cm-ss13-launcher"
     secrets: inherit

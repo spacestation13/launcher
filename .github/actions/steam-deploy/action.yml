@@ -1,9 +1,9 @@
 name: "Deploy to Steam"
-description: "Downloads build artifacts and deploys to Steam"
+description: "Downloads build artifacts and deploys to Steam via steamcmd"
 
 inputs:
   variant:
-    description: "Build variant (production or playtest)"
+    description: "Build variant (cm, ss13, ss13-playtest)"
     required: true
   steam_app_id:
     description: "Steam App ID to deploy to"
@@ -31,29 +31,22 @@ runs:
       with:
         shared_secret: ${{ inputs.steam_shared_secret }}
 
-    - name: Download Windows build
+    - name: Download artifacts
       uses: actions/download-artifact@v8
       with:
-        name: build-steam-${{ inputs.variant }}-windows
-        path: build/windows
+        pattern: build-steam-${{ inputs.variant }}-*
+        path: build
+        merge-multiple: false
 
-    - name: Download Windows WebView2 runtime
-      uses: actions/download-artifact@v8
-      with:
-        name: build-steam-${{ inputs.variant }}-windows-webview2
-        path: build/windows-webview2
-
-    - name: Download Linux build
-      uses: actions/download-artifact@v8
-      with:
-        name: build-steam-${{ inputs.variant }}-linux
-        path: build/linux
-
-    - name: Download Linux WebView2 runtime
-      uses: actions/download-artifact@v8
-      with:
-        name: build-steam-${{ inputs.variant }}-linux-webview2
-        path: build/linux-webview2
+    - name: Flatten artifact directories
+      shell: bash
+      run: |
+        cd build
+        for dir in build-steam-${{ inputs.variant }}-*/; do
+          suffix="${dir#build-steam-${{ inputs.variant }}-}"
+          suffix="${suffix%/}"
+          mv "$dir" "$suffix"
+        done
 
     - name: Get version from Cargo.toml
       id: version
@@ -62,17 +55,21 @@ runs:
         VERSION=$(grep -m1 'version' src-tauri/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+    - name: Install steamcmd
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq steamcmd
+
     - name: Deploy to Steam
-      uses: game-ci/steam-deploy@v3
-      with:
-        username: ${{ inputs.steam_username }}
-        password: ${{ inputs.steam_password }}
-        totp: ${{ steps.steam-totp.outputs.code }}
-        appId: ${{ inputs.steam_app_id }}
-        buildDescription: "v${{ steps.version.outputs.version }}"
-        rootPath: build
-        depot1Path: windows
-        depot2Path: linux
-        depot3Path: windows-webview2
-        depot4Path: linux-webview2
-        releaseBranch: ${{ inputs.steam_branch }}
+      shell: bash
+      run: |
+        python3 scripts/steam-build-vdfs.py \
+          --app-id "${{ inputs.steam_app_id }}" \
+          --branch "${{ inputs.steam_branch }}" \
+          --description "v${{ steps.version.outputs.version }}" \
+          --build-dir build
+
+        steamcmd +login "${{ inputs.steam_username }}" "${{ inputs.steam_password }}" "${{ steps.steam-totp.outputs.code }}" \
+          +run_app_build "$(pwd)/build/app_build.vdf" \
+          +quit
