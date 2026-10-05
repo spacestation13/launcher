@@ -63,6 +63,10 @@ runs:
 
     - name: Deploy to Steam
       shell: bash
+      env:
+        STEAM_USER: ${{ inputs.steam_username }}
+        STEAM_PASS: ${{ inputs.steam_password }}
+        STEAM_TOTP: ${{ steps.steam-totp.outputs.code }}
       run: |
         python3 scripts/steam-build-vdfs.py \
           --app-id "${{ inputs.steam_app_id }}" \
@@ -70,6 +74,6 @@ runs:
           --description "v${{ steps.version.outputs.version }}" \
           --build-dir build
 
-        ~/steamcmd/steamcmd.sh +login "${{ inputs.steam_username }}" "${{ inputs.steam_password }}" "${{ steps.steam-totp.outputs.code }}" \
+        ~/steamcmd/steamcmd.sh +login "$STEAM_USER" "$STEAM_PASS" "$STEAM_TOTP" \
           +run_app_build "$(pwd)/build/app_build.vdf" \
           +quit
