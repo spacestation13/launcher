@@ -32,25 +32,16 @@ jobs:
     steps:
       - name: Generate ed25519 keypair
         id: keygen
+        env:
+          PASSPHRASE: ${{ secrets.HUB_DEPLOY_TOKEN }}
         run: |
           openssl genpkey -algorithm ed25519 -outform DER -out hwid-key-full.der
           SIGNING_KEY=$(tail -c 32 hwid-key-full.der | base64 -w0)
           PUBLIC_KEY=$(openssl pkey -in hwid-key-full.der -inform DER -pubout -outform DER | tail -c 32 | base64 -w0)
           rm hwid-key-full.der
-          echo "::add-mask::$SIGNING_KEY"
-          echo "signing-key=$SIGNING_KEY" >> "$GITHUB_OUTPUT"
+          ENCRYPTED=$(echo -n "$SIGNING_KEY" | openssl enc -aes-256-cbc -pbkdf2 -a -pass "pass:$PASSPHRASE")
+          echo "signing-key=$ENCRYPTED" >> "$GITHUB_OUTPUT"
           echo "public-key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
-
-      - name: Register public key with hub
-        run: |
-          curl -f -X POST "${{ secrets.HUB_API_URL }}/manage/hwid-keys" \
-            -H "Authorization: Bearer ${{ secrets.HUB_DEPLOY_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"public_key\": \"${{ steps.keygen.outputs.public-key }}\",
-              \"variant\": \"${{ inputs.variant }}\",
-              \"build_version\": \"${{ inputs.version }}\"
-            }"
 
   rotate-github:
     if: inputs.variant == 'github'
@@ -77,8 +68,10 @@ jobs:
 
       - name: Write HWID signing key
         shell: bash
+        env:
+          PASSPHRASE: ${{ secrets.HUB_DEPLOY_TOKEN }}
         run: |
-          SIGNING_KEY="${{ needs.generate-hwid-key.outputs.signing-key }}"
+          SIGNING_KEY=$(echo "${{ needs.generate-hwid-key.outputs.signing-key }}" | openssl enc -aes-256-cbc -pbkdf2 -d -a -pass "pass:$PASSPHRASE")
           echo "::add-mask::$SIGNING_KEY"
           echo -n "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
           echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
@@ -144,8 +137,10 @@ jobs:
 
       - name: Write HWID signing key
         shell: bash
+        env:
+          PASSPHRASE: ${{ secrets.HUB_DEPLOY_TOKEN }}
         run: |
-          SIGNING_KEY="${{ needs.generate-hwid-key.outputs.signing-key }}"
+          SIGNING_KEY=$(echo "${{ needs.generate-hwid-key.outputs.signing-key }}" | openssl enc -aes-256-cbc -pbkdf2 -d -a -pass "pass:$PASSPHRASE")
           echo "::add-mask::$SIGNING_KEY"
           echo -n "$SIGNING_KEY" | base64 -d > "$RUNNER_TEMP/hwid-signing-key"
           echo "SS13HWID_SIGNING_KEY_PATH=$RUNNER_TEMP/hwid-signing-key" >> "$GITHUB_ENV"
@@ -233,3 +228,35 @@ jobs:
           steam_password: ${{ secrets.SS13_STEAM_PASSWORD }}
           steam_shared_secret: ${{ secrets.SS13_STEAM_SHARED_SECRET }}
           steam_branch: staging
+
+  register-hwid-key-github:
+    if: inputs.variant == 'github'
+    needs: [generate-hwid-key, rotate-github]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Register public key with hub
+        run: |
+          curl -f -X POST "${{ secrets.HUB_API_URL }}/manage/hwid-keys" \
+            -H "Authorization: Bearer ${{ secrets.HUB_DEPLOY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"public_key\": \"${{ needs.generate-hwid-key.outputs.public-key }}\",
+              \"variant\": \"github\",
+              \"build_version\": \"${{ inputs.version }}\"
+            }"
+
+  register-hwid-key-steam:
+    if: inputs.variant == 'steam'
+    needs: [generate-hwid-key, deploy-ss13-playtest-rotation]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Register public key with hub
+        run: |
+          curl -f -X POST "${{ secrets.HUB_API_URL }}/manage/hwid-keys" \
+            -H "Authorization: Bearer ${{ secrets.HUB_DEPLOY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"public_key\": \"${{ needs.generate-hwid-key.outputs.public-key }}\",
+              \"variant\": \"steam\",
+              \"build_version\": \"${{ inputs.version }}\"
+            }"
