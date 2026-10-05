@@ -42,7 +42,6 @@ fn collect_hwid(nonce: &[u8]) -> (u32, Vec<serde_json::Value>, Option<String>) {
                     serde_json::json!({
                         "label": c.label,
                         "hash": base64::engine::general_purpose::STANDARD.encode(c.hash),
-                        "tier": c.tier,
                     })
                 })
                 .collect();
