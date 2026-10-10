@@ -35,6 +35,16 @@ struct ErrorResponse {
     error: String,
 }
 
+fn ipv4_only_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .local_address(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED))
+        .build()
+        .unwrap_or_else(|e| {
+            tracing::warn!(%e, "failed to build IPv4-only HTTP client, falling back to default");
+            reqwest::Client::new()
+        })
+}
+
 #[derive(Deserialize)]
 struct Requires2FAResponse {
     requires_2fa: Option<bool>,
@@ -210,8 +220,7 @@ impl HubClient {
         let url = format!("{}/session/join/complete", client.base_url);
         tracing::info!(%url, "HubClient::join_complete request");
 
-        let response = client
-            .http
+        let response = ipv4_only_client()
             .post(&url)
             .header("Authorization", format!("SS13Auth {token}"))
             .json(&serde_json::json!({
@@ -225,7 +234,13 @@ impl HubClient {
             .await
             .map_err(|e| {
                 tracing::error!(%url, %e, "HubClient::join_complete network error");
-                HubAuthError::Network(format!("Failed to connect: {e}"))
+                // `join` reached the hub moments ago over the default client, so failing to even
+                // connect over IPv4 almost certainly means this machine has no IPv4 connectivity.
+                if e.is_connect() {
+                    HubAuthError::Ipv4Required
+                } else {
+                    HubAuthError::Network(format!("Failed to connect: {e}"))
+                }
             })?;
 
         tracing::info!(%url, status = %response.status(), "HubClient::join_complete response");
@@ -238,6 +253,9 @@ impl HubClient {
             if let Ok(err) = serde_json::from_str::<ErrorResponse>(&body) {
                 if err.error == "hwid_key_expired" {
                     return Err(HubAuthError::HwidKeyExpired);
+                }
+                if err.error == "ipv4_required" {
+                    return Err(HubAuthError::Ipv4Required);
                 }
             }
 
@@ -432,6 +450,7 @@ pub enum HubAuthError {
     AccountLocked,
     TokenExpired,
     HwidKeyExpired,
+    Ipv4Required,
     NotFound,
     Network(String),
     Server(String),
@@ -446,6 +465,11 @@ impl std::fmt::Display for HubAuthError {
             Self::AccountLocked => write!(f, "Account is locked"),
             Self::TokenExpired => write!(f, "Session expired, please log in again"),
             Self::HwidKeyExpired => write!(f, "Launcher update required"),
+            Self::Ipv4Required => write!(
+                f,
+                "Your connection doesn't have IPv4, which SS13 servers require. \
+                 Check your network or VPN settings."
+            ),
             Self::NotFound => write!(f, "Not found"),
             Self::Network(msg) => write!(f, "{msg}"),
             Self::Server(msg) => write!(f, "{msg}"),

@@ -23,6 +23,7 @@ impl From<HubAuthError> for CommandError {
             HubAuthError::AccountLocked => Self::AccountLocked,
             HubAuthError::TokenExpired => Self::TokenExpired,
             HubAuthError::HwidKeyExpired => Self::UpdateRequired,
+            HubAuthError::Ipv4Required => Self::Network(HubAuthError::Ipv4Required.to_string()),
             HubAuthError::Network(msg) => Self::Network(msg),
             HubAuthError::Server(msg) => Self::Network(msg),
             HubAuthError::NotFound => Self::Network("Not found".into()),

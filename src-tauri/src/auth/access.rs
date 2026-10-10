@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
+use crate::auth::hub_client::HubAuthError;
 use crate::auth::TokenStorage;
 use crate::settings::{load_settings, AuthMode};
 
@@ -92,10 +93,17 @@ async fn exchange_hub_ticket(token: &str, server_id: &str) -> Result<AccessMetho
     crate::hwid::exchange_hub_ticket(token, server_id)
         .await
         .map(AccessMethod::HubTicket)
-        .map_err(|e| AuthError {
-            code: "ticket_error".to_string(),
-            message: format!("Failed to get auth ticket: {e}"),
-            linking_url: None,
+        .map_err(|e| match e {
+            HubAuthError::Ipv4Required => AuthError {
+                code: "ipv4_required".to_string(),
+                message: e.to_string(),
+                linking_url: None,
+            },
+            _ => AuthError {
+                code: "ticket_error".to_string(),
+                message: format!("Failed to get auth ticket: {e}"),
+                linking_url: None,
+            },
         })
 }
 
