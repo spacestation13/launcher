@@ -243,6 +243,14 @@ async setRichPresence(enabled: boolean) : Promise<Result<AppSettings, CommandErr
     else return { status: "error", error: e  as any };
 }
 },
+async setRelayRoute(route: RelayRoute) : Promise<Result<AppSettings, CommandError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_relay_route", { route }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async toggleFavorite(favorite: Favorite, favorited: boolean) : Promise<Result<AppSettings, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("toggle_favorite", { favorite, favorited }) };
@@ -297,7 +305,7 @@ async getAnnouncements() : Promise<Result<HubAnnouncement[], CommandError>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getServerPings() : Promise<Result<Partial<{ [key in string]: number | null }>, CommandError>> {
+async getServerPings() : Promise<Result<ServerPingUpdate, CommandError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_server_pings") };
 } catch (e) {
@@ -543,7 +551,7 @@ async getInitialDeepLinks() : Promise<string[]> {
 
 /** user-defined types **/
 
-export type AppSettings = { auth_mode?: AuthMode; theme?: Theme; notification_servers?: string[]; locale?: string | null; rendering_pipeline?: RenderingPipeline; favorites?: Favorite[]; trusted_direct_connect_addresses?: string[]; rich_presence_enabled?: boolean; whitelisted_servers?: string[]; accepted_tos_servers?: string[] }
+export type AppSettings = { auth_mode?: AuthMode; theme?: Theme; notification_servers?: string[]; locale?: string | null; rendering_pipeline?: RenderingPipeline; favorites?: Favorite[]; trusted_direct_connect_addresses?: string[]; rich_presence_enabled?: boolean; whitelisted_servers?: string[]; accepted_tos_servers?: string[]; relay_route?: RelayRoute }
 export type AuthError = { code: string; message: string; linking_url: string | null }
 export type AuthMode = "oidc" | "hub" | "byond" | "steam"
 export type AuthState = { logged_in: boolean; user: UserInfo | null; loading: boolean; error: string | null }
@@ -565,13 +573,33 @@ export type LauncherFeatures = { relay_selector: boolean; singleplayer: boolean;
 export type LauncherStrings = { auth_provider_name: string; login_prompt: string; discord_game_name: string }
 export type LauncherUrls = { server_api: string; hub_api: string | null; auth_base: string | null; steam_auth: string | null; byond_hash_api: string | null; register_url: string | null; account_url: string | null; help_url: string }
 export type OidcConfig = { client_id: string; auth_url: string; token_url: string; userinfo_url: string }
+/**
+ * A Steam relay (ss13relay) in front of the server, as reported by its ss13lib.
+ */
+export type RelayInfo = { steam_id: string; virtual_port: number; ping_location: string }
+/**
+ * How Steam builds reach servers that list a Steam relay.
+ */
+export type RelayRoute = 
+/**
+ * Use the relay when its estimated ping beats the direct ping by a clear margin.
+ */
+"auto" | "always" | "never"
 export type RelayWithPing = ({ id: string; name: string; host: string; fallback?: boolean }) & { ping: number | null; checking: boolean }
 export type ReleaseInfo = { tag_name: string; name: string; published_at: string; download_url: string | null; size: number }
 export type RenderingPipeline = "dxvk" | "wined3d"
-export type Server = { id: string; name: string; url: string; status: string; hub_status?: string; players?: number; data?: ServerData | null; is_18_plus?: boolean; version?: string | null; engine?: EngineRequirements | null; tags?: string[]; auth_methods?: string[]; engine_type?: string | null; description?: string | null; links?: ServerLink[]; verified_domain?: string | null; region?: string | null; language?: string | null; whitelisted?: Whitelisted | null; terms_of_service?: TermsOfService | null }
+export type Server = { id: string; name: string; url: string; status: string; hub_status?: string; players?: number; data?: ServerData | null; is_18_plus?: boolean; version?: string | null; engine?: EngineRequirements | null; tags?: string[]; auth_methods?: string[]; engine_type?: string | null; description?: string | null; links?: ServerLink[]; verified_domain?: string | null; region?: string | null; language?: string | null; whitelisted?: Whitelisted | null; terms_of_service?: TermsOfService | null; relay?: RelayInfo | null }
 export type ServerApiType = "hub_api" | "cm_api"
 export type ServerData = { round_id: number; mode: string; map_name: string; round_duration: number; gamestate: number; players: number; admins?: number | null; popcap?: number | null; security_level?: string | null }
 export type ServerLink = { link: string; type: string }
+/**
+ * Pings by server URL, for whichever route each server would be joined over.
+ */
+export type ServerPingUpdate = { pings: Partial<{ [key in string]: number | null }>; 
+/**
+ * URLs of servers that would be joined through their Steam relay.
+ */
+relayed: string[] }
 export type SinglePlayerStatus = { installed: boolean; version: string | null; release_tag: string | null; path: string | null }
 export type SingleplayerConfig = { github_repo: string | null; build_asset_name: string | null; dmb_name: string | null }
 export type SocialLink = { name: string; url: string; icon: string }

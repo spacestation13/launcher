@@ -84,7 +84,8 @@
     "connected": "Connected to {{server}}",
     "restarting": "Restarting {{server}}...",
     "closeGame": "Close Game",
-    "closing": "Closing..."
+    "closing": "Closing...",
+    "relayLoginFailed": "Couldn't log in to the server through the Steam relay."
   },
   "settings": {
     "title": "Settings",
@@ -120,7 +121,15 @@
     "languageAuto": "Auto (system)",
     "richPresence": "Rich Presence",
     "richPresenceDescription": "Show your current game activity on Discord and Steam.",
-    "richPresenceEnabled": "Enable Rich Presence"
+    "richPresenceEnabled": "Enable Rich Presence",
+    "relayRoute": "Steam Relay",
+    "relayRouteDescription": "Join servers that support it through Steam's relay network instead of connecting to them directly.",
+    "relayAlways": "Always",
+    "relayAlwaysDesc": "Use the relay whenever a server has one",
+    "relayAuto": "Automatic",
+    "relayAutoDesc": "Use the relay when it has a noticeably lower ping",
+    "relayNever": "Never",
+    "relayNeverDesc": "Always connect directly"
   },
   "account": {
     "loggedInViaByondWeb": "Logged in via BYOND Web",
@@ -157,7 +166,8 @@
     "whitelistPrompt": "This server requires you to be whitelisted before joining.",
     "whitelistConfirm": "I am whitelisted on this server.",
     "tosRequired": "This server requires you to accept their terms of service before joining.",
-    "tosViewLink": "Terms of Service"
+    "tosViewLink": "Terms of Service",
+    "viaRelay": "Joined through the Steam relay"
   },
   "nav": {
     "home": "Home",

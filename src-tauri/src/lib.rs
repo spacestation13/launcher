@@ -11,6 +11,8 @@ mod job_object;
 mod logging;
 mod open_url;
 mod presence;
+#[cfg(feature = "steam")]
+mod relay_proxy;
 mod relays;
 mod server_ping;
 mod servers;
@@ -49,8 +51,8 @@ use relays::{get_relays, get_selected_relay, set_selected_relay};
 use server_ping::get_server_pings;
 use servers::{get_announcements, get_servers};
 use settings::{
-    get_settings, set_accepted_tos_server, set_auth_mode, set_locale, set_rendering_pipeline,
-    set_rich_presence, set_theme, set_whitelisted_server, toggle_favorite,
+    get_settings, set_accepted_tos_server, set_auth_mode, set_locale, set_relay_route,
+    set_rendering_pipeline, set_rich_presence, set_theme, set_whitelisted_server, toggle_favorite,
     toggle_server_notifications, trust_direct_connect_address,
 };
 use singleplayer::{
@@ -283,6 +285,7 @@ pub fn build_specta() -> tauri_specta::Builder<tauri::Wry> {
         toggle_server_notifications,
         set_rendering_pipeline,
         set_rich_presence,
+        set_relay_route,
         toggle_favorite,
         trust_direct_connect_address,
         set_whitelisted_server,
@@ -435,7 +438,9 @@ pub fn run() {
                 let steam_state_clone = Arc::clone(&steam_state);
                 steam_poll_callback = Some(Box::new(move || steam_state_clone.run_callbacks()));
 
-                builder = builder.manage(steam_state);
+                builder = builder
+                    .manage(steam_state)
+                    .manage(Arc::new(relay_proxy::RelayProxyState::default()));
             }
             Err(e) => {
                 tracing::error!("Failed to initialize Steam: {:?}", e);

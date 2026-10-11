@@ -40,6 +40,9 @@ pub struct ConnectionRequest {
     pub server_id: Option<String>,
     #[cfg_attr(not(any(target_os = "windows", target_os = "linux")), allow(dead_code))]
     pub players: Option<i32>,
+    /// May join through the server's Steam relay (Steam builds, server list joins only).
+    #[cfg_attr(not(any(target_os = "windows", target_os = "linux")), allow(dead_code))]
+    pub allow_relay: bool,
 }
 
 const VERSIONS_FILE: &str = "byond_versions.json";
@@ -847,6 +850,7 @@ pub async fn connect_to_server(
             source,
             server_id: Some(server_id),
             players: Some(server.players),
+            allow_relay: true,
         },
     )
     .await
@@ -1346,6 +1350,7 @@ pub async fn connect_to_address(
             source,
             server_id,
             players: None,
+            allow_relay: false,
         },
     )
     .await
@@ -1363,6 +1368,7 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
         source,
         server_id,
         players,
+        allow_relay,
     } = req;
 
     let version_info = install_byond_version(app.clone(), version.clone()).await?;
@@ -1418,6 +1424,9 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
         if source.as_deref() != Some("control_server_restart") {
             app.emit("game-connecting", &server_name).ok();
         }
+
+        let relay_port =
+            relay_proxy_port(&app, allow_relay, &access_method, server_id.as_deref()).await;
 
         if let Some(session) = session_check {
             let web_id = session.web_id.ok_or(CommandError::NotAuthenticated)?;
@@ -1504,6 +1513,7 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
                     map_name: map_name.clone(),
                     server_id: server_id.clone(),
                     launcher_key: launcher_key.clone(),
+                    allow_relay,
                 });
 
                 if let Some(pid) = dreamseeker_pid {
@@ -1521,9 +1531,13 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
                 }
             }
         } else {
+            let (connect_host, connect_port) = match relay_port {
+                Some(relay_port) => ("127.0.0.1".to_string(), relay_port.to_string()),
+                None => (host.clone(), port.clone()),
+            };
             let connect_url = build_connect_url(
-                &host,
-                &port,
+                &connect_host,
+                &connect_port,
                 &access_method,
                 control_port.as_deref(),
                 launcher_key.as_deref(),
@@ -1573,6 +1587,7 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
                     map_name: map_name.clone(),
                     server_id: server_id.clone(),
                     launcher_key: launcher_key.clone(),
+                    allow_relay,
                 });
 
                 manager.start_game_session(
@@ -1585,7 +1600,9 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
             }
         }
 
-        if config.features.connection_timeout_fallback {
+        if relay_port.is_some() {
+            spawn_relay_login_guard(&app, launcher_key.clone());
+        } else if config.features.connection_timeout_fallback {
             if let Some(manager) = app.try_state::<Arc<PresenceManager>>() {
                 let app_clone = app.clone();
                 let server_name_clone = server_name.clone();
@@ -1604,10 +1621,15 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
             tracing::warn!("Failed to record BYOND version usage: {}", e);
         }
 
+        let via_relay = if relay_port.is_some() {
+            " through the Steam relay"
+        } else {
+            ""
+        };
         #[cfg(target_os = "windows")]
-        let message = format!("Connecting to {} with BYOND {}", host, version);
+        let message = format!("Connecting to {host}{via_relay} with BYOND {version}");
         #[cfg(target_os = "linux")]
-        let message = format!("Connecting to {} with BYOND {} (via Wine)", host, version);
+        let message = format!("Connecting to {host}{via_relay} with BYOND {version} (via Wine)");
 
         return Ok(ConnectionResult {
             success: true,
@@ -1632,6 +1654,61 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
             platform: std::env::consts::OS.into(),
         })
     }
+}
+
+/// The local relay proxy port to launch DreamSeeker against, or `None` to connect directly.
+/// Only hub tickets go through the relay and relayed players can't use BYOND authentication.
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+#[cfg_attr(not(feature = "steam"), allow(clippy::unused_async))]
+async fn relay_proxy_port(
+    app: &AppHandle,
+    allow_relay: bool,
+    access_method: &AccessMethod,
+    server_id: Option<&str>,
+) -> Option<u16> {
+    #[cfg(feature = "steam")]
+    {
+        if let (true, AccessMethod::HubTicket(_), Some(server_id)) =
+            (allow_relay, access_method, server_id)
+        {
+            return crate::relay_proxy::route(app, server_id).await;
+        }
+        crate::relay_proxy::close(app).await;
+    }
+    #[cfg(not(feature = "steam"))]
+    let _ = (app, allow_relay, access_method, server_id);
+    None
+}
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+const RELAY_LOGIN_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(5);
+
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+fn spawn_relay_login_guard(app: &AppHandle, launcher_key: Option<String>) {
+    use crate::control_server::ControlServer;
+    use crate::presence::PresenceManager;
+
+    let Some(launcher_key) = launcher_key else {
+        return;
+    };
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(RELAY_LOGIN_TIMEOUT).await;
+        let Some(control_server) = app.try_state::<ControlServer>() else {
+            return;
+        };
+        if control_server.game_connected.load(Ordering::SeqCst)
+            || control_server.get_key() != launcher_key
+        {
+            return;
+        }
+        tracing::warn!("relayed session didn't log in within {RELAY_LOGIN_TIMEOUT:?}, closing it");
+        if let Some(manager) = app.try_state::<Arc<PresenceManager>>() {
+            manager.kill_game_process();
+        }
+        #[cfg(feature = "steam")]
+        crate::relay_proxy::close(&app).await;
+        app.emit("relay-login-failed", ()).ok();
+    });
 }
 
 #[tauri::command]
@@ -1938,6 +2015,7 @@ pub async fn connect_to_url(
                 source,
                 server_id: None,
                 players: None,
+                allow_relay: false,
             },
         )
         .await

@@ -2,7 +2,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { create } from "zustand";
 
 import { commands } from "../bindings";
-import type { RelayWithPing, Server } from "../bindings";
+import type { RelayWithPing, Server, ServerPingUpdate } from "../bindings";
 import { unwrap } from "../lib/unwrap";
 
 interface ServerUpdateEvent {
@@ -15,10 +15,6 @@ interface ServerErrorEvent {
 
 type PingMap = Partial<Record<string, number | null>>;
 
-interface ServerPingUpdate {
-  pings: PingMap;
-}
-
 interface ServerStore {
   servers: Server[];
   loading: boolean;
@@ -28,8 +24,10 @@ interface ServerStore {
   relaysReady: boolean;
   lastUpdated: number | null;
   pings: PingMap;
+  relayedUrls: Set<string>;
 
   setSelectedRelay: (id: string) => void;
+  refreshPings: () => Promise<void>;
   initListener: () => Promise<UnlistenFn>;
   initRelays: () => Promise<UnlistenFn>;
 }
@@ -49,10 +47,20 @@ export const useServerStore = create<ServerStore>()((set) => ({
   relaysReady: false,
   lastUpdated: null,
   pings: {},
+  relayedUrls: new Set<string>(),
 
   setSelectedRelay: async (selectedRelay) => {
     set({ selectedRelay });
     await commands.setSelectedRelay(selectedRelay);
+  },
+
+  refreshPings: async () => {
+    try {
+      const update = unwrap(await commands.getServerPings());
+      set({ pings: update.pings, relayedUrls: new Set(update.relayed) });
+    } catch (err) {
+      console.error("Failed to get pings:", err);
+    }
   },
 
   initListener: async () => {
@@ -73,15 +81,10 @@ export const useServerStore = create<ServerStore>()((set) => ({
       set({ error: event.payload.error, loading: false });
     });
 
-    try {
-      const pings = unwrap(await commands.getServerPings());
-      set({ pings });
-    } catch (err) {
-      console.error("Failed to get initial pings:", err);
-    }
+    await useServerStore.getState().refreshPings();
 
     const unlistenPings = await listen<ServerPingUpdate>("server-pings-updated", (event) => {
-      set({ pings: event.payload.pings });
+      set({ pings: event.payload.pings, relayedUrls: new Set(event.payload.relayed) });
     });
 
     return () => {

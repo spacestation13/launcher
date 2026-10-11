@@ -4,12 +4,14 @@ import {
   type AppSettings,
   type AuthMode,
   type Favorite,
+  type RelayRoute,
   type RenderingPipeline,
   commands,
   type Theme,
 } from "../bindings";
 import { setLocale } from "../i18n";
 import { unwrap } from "../lib/unwrap";
+import { useServerStore } from "./serverStore";
 
 interface SettingsStore {
   loaded: boolean;
@@ -24,6 +26,7 @@ interface SettingsStore {
   whitelistedServers: Set<string>;
   acceptedTosServers: Set<string>;
   richPresenceEnabled: boolean;
+  relayRoute: RelayRoute;
 
   setAuthMode: (mode: AuthMode) => void;
   setTheme: (theme: Theme) => void;
@@ -44,6 +47,7 @@ interface SettingsStore {
   setAcceptedTos: (uuid: string, state: boolean) => Promise<void>;
   hasAcceptedTos: (uuid: string) => boolean;
   saveRichPresence: (enabled: boolean) => Promise<void>;
+  saveRelayRoute: (route: RelayRoute) => Promise<void>;
 }
 
 function favoritesMatch(a: Favorite, b: Favorite): boolean {
@@ -65,6 +69,7 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
   favorites: [],
   trustedAddresses: new Set<string>(),
   richPresenceEnabled: true,
+  relayRoute: "always",
   whitelistedServers: new Set<string>(),
   acceptedTosServers: new Set<string>(),
 
@@ -90,6 +95,7 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
         richPresenceEnabled: settings.rich_presence_enabled ?? true,
         whitelistedServers: new Set(settings.whitelisted_servers ?? []),
         acceptedTosServers: new Set(settings.accepted_tos_servers ?? []),
+        relayRoute: settings.relay_route ?? "always",
       });
       if (settings.locale) {
         setLocale(settings.locale);
@@ -174,5 +180,11 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
   saveRichPresence: async (enabled: boolean) => {
     unwrap(await commands.setRichPresence(enabled));
     set({ richPresenceEnabled: enabled });
+  },
+
+  saveRelayRoute: async (route: RelayRoute) => {
+    unwrap(await commands.setRelayRoute(route));
+    set({ relayRoute: route });
+    await useServerStore.getState().refreshPings();
   },
 }));

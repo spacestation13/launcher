@@ -20,6 +20,12 @@ impl SteamState {
         tracing::debug!("Initializing Steam client");
         let client = Client::init()?;
 
+        // Start measuring relay pings now, so server list ping estimates and the first relayed
+        // connection don't wait on it.
+        ss13relay_proto::steam::install_debug_output(false);
+        ss13relay_proto::steam::LinkConfig::default().apply_globally();
+        client.networking_utils().init_relay_network_access();
+
         let pending_ticket_tx: Arc<Mutex<Option<oneshot::Sender<TicketForWebApiResponse>>>> =
             Arc::new(Mutex::new(None));
 

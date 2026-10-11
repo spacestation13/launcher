@@ -35,6 +35,7 @@ dependencies = [
  "sha2",
  "specta",
  "specta-typescript",
+ "ss13relay-proto",
  "steamworks",
  "sysinfo",
  "tar",
@@ -4717,6 +4718,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ss13relay-proto"
+version = "0.1.0"
+source = "git+https://github.com/spacestation13/ss13relay?tag=v0.1.0#858a67883d42d28a946ff1a0ecc3e3ec33243809"
+dependencies = [
+ "steamworks",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5543,6 +5555,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

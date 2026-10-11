@@ -77,6 +77,15 @@ pub struct Server {
     pub whitelisted: Option<Whitelisted>,
     #[serde(default)]
     pub terms_of_service: Option<TermsOfService>,
+    #[serde(default)]
+    pub relay: Option<RelayInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub struct RelayInfo {
+    pub steam_id: String,
+    pub virtual_port: u16,
+    pub ping_location: String,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -152,6 +161,8 @@ struct HubServerStatus {
     description: Option<String>,
     #[serde(default)]
     links: Option<Vec<ServerLink>>,
+    #[serde(default)]
+    relay: Option<RelayInfo>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -194,6 +205,7 @@ impl HubApi {
             connection_address,
             region,
             language,
+            relay,
         ) = if let Some(ref s) = hub.status {
             let round = s.round.as_ref();
 
@@ -234,6 +246,7 @@ impl HubApi {
                 s.connection_address.clone(),
                 s.region.clone(),
                 s.language.clone(),
+                s.relay.clone(),
             )
         } else {
             (
@@ -245,6 +258,7 @@ impl HubApi {
                 false,
                 None,
                 Vec::new(),
+                None,
                 None,
                 None,
                 None,
@@ -274,6 +288,7 @@ impl HubApi {
             language,
             whitelisted: hub.whitelisted,
             terms_of_service: hub.terms_of_service,
+            relay,
         }
     }
 }
@@ -380,6 +395,7 @@ impl CmApi {
             language: None,
             whitelisted: None,
             terms_of_service: None,
+            relay: None,
         }
     }
 }

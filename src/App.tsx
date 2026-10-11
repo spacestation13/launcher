@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
@@ -145,6 +146,15 @@ const AppContent = () => {
   useEffect(() => {
     document.documentElement.className = `theme-${theme}`;
   }, [theme]);
+
+  useEffect(() => {
+    const unlisten = listen("relay-login-failed", () => {
+      showError(t("connection.relayLoginFailed"));
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [showError, t]);
 
   useEffect(() => {
     if (platform === "linux") {

@@ -46,6 +46,16 @@ pub enum RenderingPipeline {
     Wined3d,
 }
 
+/// How Steam builds reach servers that list a Steam relay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum RelayRoute {
+    Auto,
+    #[default]
+    Always,
+    Never,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Favorite {
@@ -94,6 +104,8 @@ pub struct AppSettings {
     pub whitelisted_servers: HashSet<String>,
     #[serde(default)]
     pub accepted_tos_servers: HashSet<String>,
+    #[serde(default, deserialize_with = "deserialize_with_default")]
+    pub relay_route: RelayRoute,
 }
 
 fn default_true() -> bool {
@@ -136,6 +148,7 @@ impl Default for AppSettings {
             rich_presence_enabled: true,
             whitelisted_servers: HashSet::new(),
             accepted_tos_servers: HashSet::new(),
+            relay_route: RelayRoute::default(),
         }
     }
 }
@@ -251,6 +264,15 @@ pub async fn set_rendering_pipeline(
 ) -> CommandResult<AppSettings> {
     let mut settings = load_settings(&app)?;
     settings.rendering_pipeline = pipeline;
+    save_settings(&app, &settings)?;
+    Ok(settings)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn set_relay_route(app: AppHandle, route: RelayRoute) -> CommandResult<AppSettings> {
+    let mut settings = load_settings(&app)?;
+    settings.relay_route = route;
     save_settings(&app, &settings)?;
     Ok(settings)
 }

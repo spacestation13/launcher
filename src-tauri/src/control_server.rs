@@ -438,6 +438,7 @@ impl ControlServer {
                     source: Some("control_server_restart".to_string()),
                     server_id: fresh_params.server_id,
                     players: None,
+                    allow_relay: fresh_params.allow_relay,
                 },
             )
             .await;
@@ -481,9 +482,21 @@ impl ControlServer {
                 .try_state::<ControlServer>()
                 .map(|s| s.ws_port.to_string());
 
+            #[allow(unused_mut)]
+            let (mut host, mut port) = (fresh_params.host, fresh_params.port);
+            #[cfg(feature = "steam")]
+            if let (true, Some(server_id)) = (fresh_params.allow_relay, &fresh_params.server_id) {
+                if let Some(relay_port) =
+                    crate::relay_proxy::active_port(app_handle, server_id).await
+                {
+                    host = "127.0.0.1".to_string();
+                    port = relay_port.to_string();
+                }
+            }
+
             let url = crate::byond::build_connect_url(
-                &fresh_params.host,
-                &fresh_params.port,
+                &host,
+                &port,
                 &fresh_params.access_method,
                 control_port.as_deref(),
                 launcher_key.as_deref(),

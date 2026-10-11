@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { commands } from "../bindings";
-import type { AuthMode, RenderingPipeline, Theme, WineStatus } from "../bindings";
+import type { AuthMode, RelayRoute, RenderingPipeline, Theme, WineStatus } from "../bindings";
 import { useAuthFlow } from "../hooks";
 import { getAvailableLocales } from "../i18n";
 import { unwrap } from "../lib/unwrap";
@@ -110,6 +110,45 @@ const AuthModeOption = ({
         <span className="auth-mode-desc">{description}</span>
       </div>
     </label>
+  );
+};
+
+const RELAY_ROUTES = [
+  { route: "always", name: "settings.relayAlways", description: "settings.relayAlwaysDesc" },
+  { route: "auto", name: "settings.relayAuto", description: "settings.relayAutoDesc" },
+  { route: "never", name: "settings.relayNever", description: "settings.relayNeverDesc" },
+] as const satisfies readonly { route: RelayRoute; name: string; description: string }[];
+
+const RelayRouteSettings = () => {
+  const { t } = useTranslation();
+  const relayRoute = useSettingsStore((s) => s.relayRoute);
+  const saveRelayRoute = useSettingsStore((s) => s.saveRelayRoute);
+
+  return (
+    <div className="settings-section">
+      <h3>{t("settings.relayRoute")}</h3>
+      <p className="settings-description">{t("settings.relayRouteDescription")}</p>
+      <div className="auth-mode-options">
+        {RELAY_ROUTES.map(({ route, name, description }) => (
+          <label
+            key={route}
+            className={`auth-mode-option ${relayRoute === route ? "selected" : ""}`}
+          >
+            <input
+              type="radio"
+              name="relayRoute"
+              value={route}
+              checked={relayRoute === route}
+              onChange={() => saveRelayRoute(route)}
+            />
+            <div className="auth-mode-info">
+              <span className="auth-mode-name">{t(name)}</span>
+              <span className="auth-mode-desc">{t(description)}</span>
+            </div>
+          </label>
+        ))}
+      </div>
+    </div>
   );
 };
 
@@ -523,6 +562,8 @@ export const SettingsModal = ({
             />
           </div>
         </div>
+
+        {steamAvailable && <RelayRouteSettings />}
 
         <WineSettings
           platform={platform}

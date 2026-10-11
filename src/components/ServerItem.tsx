@@ -1,5 +1,10 @@
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { faDiscord, faGithub, faSignalMessenger } from "@fortawesome/free-brands-svg-icons";
+import {
+  faDiscord,
+  faGithub,
+  faSignalMessenger,
+  faSteam,
+} from "@fortawesome/free-brands-svg-icons";
 import {
   faBell,
   faBellSlash,
@@ -62,6 +67,7 @@ export const ServerItem = ({
 
   const config = useConfigStore((s) => s.config);
   const ping = useServerStore((s) => s.pings[server.url] ?? null);
+  const relayed = useServerStore((s) => s.relayedUrls.has(server.url));
   const relaysReady = useServerStore((s) => s.relaysReady);
   const notificationsEnabled = useSettingsStore((s) => s.notificationServers.has(server.id));
   const toggleServerNotifications = useSettingsStore((s) => s.toggleServerNotifications);
@@ -328,8 +334,9 @@ export const ServerItem = ({
                   style={{
                     color: ping < 80 ? "#4ade80" : ping < 200 ? "#facc15" : "#f87171",
                   }}
+                  title={relayed ? t("servers.viaRelay") : undefined}
                 >
-                  <FontAwesomeIcon icon={faSignal} className="ping-icon" />
+                  <FontAwesomeIcon icon={relayed ? faSteam : faSignal} className="ping-icon" />
                   {ping}ms
                 </div>
               )}
