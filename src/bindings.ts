@@ -573,18 +573,11 @@ export type LauncherFeatures = { relay_selector: boolean; singleplayer: boolean;
 export type LauncherStrings = { auth_provider_name: string; login_prompt: string; discord_game_name: string }
 export type LauncherUrls = { server_api: string; hub_api: string | null; auth_base: string | null; steam_auth: string | null; byond_hash_api: string | null; register_url: string | null; account_url: string | null; help_url: string }
 export type OidcConfig = { client_id: string; auth_url: string; token_url: string; userinfo_url: string }
-/**
- * A Steam relay (ss13relay) in front of the server, as reported by its ss13lib.
- */
 export type RelayInfo = { steam_id: string; virtual_port: number; ping_location: string }
 /**
  * How Steam builds reach servers that list a Steam relay.
  */
-export type RelayRoute = 
-/**
- * Use the relay when its estimated ping beats the direct ping by a clear margin.
- */
-"auto" | "always" | "never"
+export type RelayRoute = "auto" | "always" | "never"
 export type RelayWithPing = ({ id: string; name: string; host: string; fallback?: boolean }) & { ping: number | null; checking: boolean }
 export type ReleaseInfo = { tag_name: string; name: string; published_at: string; download_url: string | null; size: number }
 export type RenderingPipeline = "dxvk" | "wined3d"
@@ -592,9 +585,6 @@ export type Server = { id: string; name: string; url: string; status: string; hu
 export type ServerApiType = "hub_api" | "cm_api"
 export type ServerData = { round_id: number; mode: string; map_name: string; round_duration: number; gamestate: number; players: number; admins?: number | null; popcap?: number | null; security_level?: string | null }
 export type ServerLink = { link: string; type: string }
-/**
- * Pings by server URL, for whichever route each server would be joined over.
- */
 export type ServerPingUpdate = { pings: Partial<{ [key in string]: number | null }>; 
 /**
  * URLs of servers that would be joined through their Steam relay.
