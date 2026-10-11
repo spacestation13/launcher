@@ -1909,18 +1909,11 @@ p.settings-description-hint {
   animation: spin 1s linear infinite;
 }
 
-.game-connection-progress {
-  width: 200px;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.game-connection-progress-bar {
-  height: 100%;
-  background: var(--primary);
-  transition: width 1s linear;
+.game-connection-transfer {
+  color: var(--text);
+  margin: 0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .wine-progress-bar {

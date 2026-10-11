@@ -81,11 +81,13 @@
   },
   "connection": {
     "connecting": "Connecting to {{server}}...",
+    "downloading": "Downloading assets for {{server}}...",
     "connected": "Connected to {{server}}",
     "restarting": "Restarting {{server}}...",
     "closeGame": "Close Game",
     "closing": "Closing...",
-    "relayLoginFailed": "Couldn't log in to the server through the Steam relay."
+    "relayLoginFailed": "Couldn't log in to the server through the Steam relay.",
+    "transfer": "{{speed}}/s · {{received}} received"
   },
   "settings": {
     "title": "Settings",

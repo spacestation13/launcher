@@ -7,17 +7,18 @@
 #![cfg_attr(not(any(target_os = "windows", target_os = "linux")), allow(dead_code))]
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use parking_lot::Mutex;
+use serde::Serialize;
 use ss13relay_proto::driver::{Connection, Driver, DriverEvent, Mode};
 use ss13relay_proto::pump::{self, StreamInput};
 use ss13relay_proto::steam::LinkConfig;
 use ss13relay_proto::{CloseReason, Frame, StreamId, PROTOCOL_VERSION};
 use steamworks::SteamId;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, oneshot};
 
@@ -33,6 +34,15 @@ const HELLO_TIMEOUT: Duration = Duration::from_secs(5);
 const IDLE_TIMEOUT: Duration = Duration::from_mins(1);
 const IDLE_CHECK_INTERVAL: Duration = Duration::from_secs(5);
 const STREAM_INPUT_CAPACITY: usize = 64;
+const TRANSFER_REPORT_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Emitted as `relay-transfer` every second while a session is up, for the connecting screen.
+#[derive(Debug, Clone, Serialize)]
+pub struct RelayTransfer {
+    /// Game data received over this session so far.
+    pub received_bytes: u64,
+    pub bytes_per_sec: u64,
+}
 
 #[derive(Default)]
 pub struct RelayProxyState {
@@ -43,6 +53,7 @@ struct RelaySession {
     server_id: String,
     port: u16,
     alive: Arc<AtomicBool>,
+    received: Arc<AtomicU64>,
     /// Dropping this stops the session.
     _stop: oneshot::Sender<()>,
 }
@@ -114,6 +125,16 @@ pub async fn active_port(app: &AppHandle, server_id: &str) -> Option<u16> {
         .as_ref()
         .filter(|s| s.is_live_for(server_id))
         .map(|s| s.port)
+}
+
+/// Game data received so far over `server_id`'s live session.
+pub async fn received_bytes(app: &AppHandle, server_id: &str) -> Option<u64> {
+    let state = app.try_state::<Arc<RelayProxyState>>()?;
+    let session = state.session.lock().await;
+    session
+        .as_ref()
+        .filter(|s| s.is_live_for(server_id))
+        .map(|s| s.received.load(Ordering::Relaxed))
 }
 
 /// Close the current session, if any.
@@ -198,6 +219,7 @@ impl RelaySession {
         );
 
         let alive = Arc::new(AtomicBool::new(true));
+        let received = Arc::new(AtomicU64::new(0));
         let (stop_tx, stop_rx) = oneshot::channel();
         tauri::async_runtime::spawn(serve(
             app.clone(),
@@ -210,12 +232,14 @@ impl RelaySession {
             listener,
             stop_rx,
             Arc::clone(&alive),
+            Arc::clone(&received),
         ));
 
         Ok(RelaySession {
             server_id: server_id.to_string(),
             port,
             alive,
+            received,
             _stop: stop_tx,
         })
     }
@@ -241,6 +265,7 @@ async fn serve(
     listener: TcpListener,
     mut stop: oneshot::Receiver<()>,
     alive: Arc<AtomicBool>,
+    received: Arc<AtomicU64>,
 ) {
     let SteamLink {
         driver,
@@ -250,10 +275,16 @@ async fn serve(
     } = link;
     let routes: Routes = Arc::default();
     let open_streams = Arc::new(AtomicUsize::new(0));
-    let mut mux = tokio::spawn(route_inbound(inbound, Arc::clone(&routes)));
+    let mut mux = tokio::spawn(route_inbound(
+        inbound,
+        Arc::clone(&routes),
+        Arc::clone(&received),
+    ));
     let mut next_stream: StreamId = 1;
     let mut last_active = Instant::now();
     let mut idle_check = tokio::time::interval(IDLE_CHECK_INTERVAL);
+    let mut transfer_report = tokio::time::interval(TRANSFER_REPORT_INTERVAL);
+    let mut last_reported = 0;
 
     let reason = loop {
         tokio::select! {
@@ -280,6 +311,12 @@ async fn serve(
             },
             _ = &mut mux => break "Steam connection closed".into(),
             _ = &mut stop => break "closed by the launcher".into(),
+            _ = transfer_report.tick() => {
+                let received_bytes = received.load(Ordering::Relaxed);
+                let bytes_per_sec = received_bytes.saturating_sub(last_reported);
+                last_reported = received_bytes;
+                app.emit("relay-transfer", RelayTransfer { received_bytes, bytes_per_sec }).ok();
+            }
             _ = idle_check.tick() => {
                 if open_streams.load(Ordering::SeqCst) > 0 || game_running(&app) {
                     last_active = Instant::now();
@@ -303,7 +340,11 @@ fn game_running(app: &AppHandle) -> bool {
         .is_some_and(|manager| manager.check_game_running())
 }
 
-async fn route_inbound(mut inbound: mpsc::Receiver<Vec<u8>>, routes: Routes) {
+async fn route_inbound(
+    mut inbound: mpsc::Receiver<Vec<u8>>,
+    routes: Routes,
+    received: Arc<AtomicU64>,
+) {
     while let Some(bytes) = inbound.recv().await {
         let frame = match Frame::decode(&bytes) {
             Ok(frame) => frame,
@@ -319,6 +360,7 @@ async fn route_inbound(mut inbound: mpsc::Receiver<Vec<u8>>, routes: Routes) {
                 }
             }
             Frame::Data { stream, data } => {
+                received.fetch_add(data.len() as u64, Ordering::Relaxed);
                 let input = routes.lock().get(&stream).map(|r| r.input.clone());
                 if let Some(input) = input {
                     let _ = input.send(StreamInput::Data(data)).await;

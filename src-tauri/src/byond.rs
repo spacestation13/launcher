@@ -1601,7 +1601,8 @@ async fn connect_impl(app: AppHandle, req: ConnectionRequest) -> CommandResult<C
         }
 
         if relay_port.is_some() {
-            spawn_relay_login_guard(&app, launcher_key.clone());
+            #[cfg(feature = "steam")]
+            spawn_relay_login_guard(&app, launcher_key.clone(), server_id.clone());
         } else if config.features.connection_timeout_fallback {
             if let Some(manager) = app.try_state::<Arc<PresenceManager>>() {
                 let app_clone = app.clone();
@@ -1679,33 +1680,53 @@ async fn relay_proxy_port(
     let _ = (app, allow_relay, access_method, server_id);
     None
 }
-#[cfg(any(target_os = "windows", target_os = "linux"))]
-const RELAY_LOGIN_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(5);
 
-#[cfg(any(target_os = "windows", target_os = "linux"))]
-fn spawn_relay_login_guard(app: &AppHandle, launcher_key: Option<String>) {
+#[cfg(all(feature = "steam", any(target_os = "windows", target_os = "linux")))]
+const RELAY_LOGIN_IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_mins(2);
+
+#[cfg(all(feature = "steam", any(target_os = "windows", target_os = "linux")))]
+fn spawn_relay_login_guard(
+    app: &AppHandle,
+    launcher_key: Option<String>,
+    server_id: Option<String>,
+) {
     use crate::control_server::ControlServer;
     use crate::presence::PresenceManager;
 
-    let Some(launcher_key) = launcher_key else {
+    let (Some(launcher_key), Some(server_id)) = (launcher_key, server_id) else {
         return;
     };
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(RELAY_LOGIN_TIMEOUT).await;
-        let Some(control_server) = app.try_state::<ControlServer>() else {
-            return;
-        };
-        if control_server.game_connected.load(Ordering::SeqCst)
-            || control_server.get_key() != launcher_key
-        {
-            return;
+        let mut last_received = None;
+        let mut last_progress = std::time::Instant::now();
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            let Some(control_server) = app.try_state::<ControlServer>() else {
+                return;
+            };
+            // Logged in, or a newer connection rotated the key and has its own guard
+            if control_server.game_connected.load(Ordering::SeqCst)
+                || control_server.get_key() != launcher_key
+            {
+                return;
+            }
+            let Some(received) = crate::relay_proxy::received_bytes(&app, &server_id).await else {
+                return;
+            };
+            if last_received != Some(received) {
+                last_received = Some(received);
+                last_progress = std::time::Instant::now();
+            } else if last_progress.elapsed() >= RELAY_LOGIN_IDLE_TIMEOUT {
+                break;
+            }
         }
-        tracing::warn!("relayed session didn't log in within {RELAY_LOGIN_TIMEOUT:?}, closing it");
+        tracing::warn!(
+            "relayed session hasn't logged in and nothing has arrived for {RELAY_LOGIN_IDLE_TIMEOUT:?}, closing it"
+        );
         if let Some(manager) = app.try_state::<Arc<PresenceManager>>() {
             manager.kill_game_process();
         }
-        #[cfg(feature = "steam")]
         crate::relay_proxy::close(&app).await;
         app.emit("relay-login-failed", ()).ok();
     });

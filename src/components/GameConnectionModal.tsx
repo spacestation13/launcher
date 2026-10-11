@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -5,7 +6,17 @@ import { commands } from "../bindings";
 
 export type GameConnectionState = "idle" | "connecting" | "connected" | "restarting";
 
-const CONNECTION_TIMEOUT_SECONDS = 30;
+interface RelayTransfer {
+  received_bytes: number;
+  bytes_per_sec: number;
+}
+
+const DOWNLOADING_THRESHOLD_BYTES = 1024 * 1024;
+
+const formatBytes = (bytes: number) =>
+  bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.round(bytes / 1024)} KB`;
 
 interface GameConnectionModalProps {
   visible: boolean;
@@ -24,17 +35,20 @@ export const GameConnectionModal = ({
 }: GameConnectionModalProps) => {
   const { t } = useTranslation();
   const [closing, setClosing] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(CONNECTION_TIMEOUT_SECONDS);
+  const [transfer, setTransfer] = useState<RelayTransfer | null>(null);
+
+  const showSpinner = state === "connecting" || state === "restarting";
 
   useEffect(() => {
-    if (state === "connecting" || state === "restarting") {
-      setTimeRemaining(CONNECTION_TIMEOUT_SECONDS);
-      const interval = setInterval(() => {
-        setTimeRemaining((prev) => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [state]);
+    setTransfer(null);
+    if (!showSpinner) return;
+    const unlisten = listen<RelayTransfer>("relay-transfer", (event) => {
+      setTransfer(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [showSpinner]);
 
   if (!visible) return null;
 
@@ -50,7 +64,15 @@ export const GameConnectionModal = ({
     }
   };
 
+  const download =
+    showSpinner && transfer && transfer.received_bytes >= DOWNLOADING_THRESHOLD_BYTES
+      ? transfer
+      : null;
+
   const getStatusText = () => {
+    if (download) {
+      return t("connection.downloading", { server: serverName });
+    }
     switch (state) {
       case "restarting":
         return t("connection.restarting", { server: serverName });
@@ -61,10 +83,6 @@ export const GameConnectionModal = ({
     }
   };
 
-  const showSpinner = state === "connecting" || state === "restarting";
-  const progressPercent =
-    ((CONNECTION_TIMEOUT_SECONDS - timeRemaining) / CONNECTION_TIMEOUT_SECONDS) * 100;
-
   return (
     <div className="game-connection-overlay">
       <div className="game-connection-modal">
@@ -74,13 +92,13 @@ export const GameConnectionModal = ({
           {state === "restarting" && restartReason && (
             <p className="game-connection-reason">{restartReason}</p>
           )}
-          {showSpinner && (
-            <div className="game-connection-progress">
-              <div
-                className="game-connection-progress-bar"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+          {download && (
+            <p className="game-connection-transfer">
+              {t("connection.transfer", {
+                speed: formatBytes(download.bytes_per_sec),
+                received: formatBytes(download.received_bytes),
+              })}
+            </p>
           )}
         </div>
         <button type="button" className="button" onClick={handleCloseGame} disabled={closing}>
