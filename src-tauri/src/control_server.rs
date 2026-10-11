@@ -563,7 +563,6 @@ impl ControlServer {
     }
 }
 
-#[allow(clippy::unused_async)]
 async fn refresh_auth_token(
     #[allow(unused_variables)] app_handle: &tauri::AppHandle,
     mut params: ConnectionParams,
@@ -609,9 +608,16 @@ async fn refresh_auth_token(
             );
             match crate::auth::TokenStorage::get_tokens().map_err(|e| e.to_string())? {
                 Some(tokens) if !crate::auth::TokenStorage::is_expired() => {
-                    params.access_method = AccessMethod::SessionToken {
-                        variant: config.variant.to_string(),
-                        token: tokens.access_token,
+                    params.access_method = match (config.urls.hub_api, &params.server_id) {
+                        (Some(_), Some(server_id)) => AccessMethod::HubTicket(
+                            crate::hwid::exchange_hub_ticket(&tokens.access_token, server_id)
+                                .await
+                                .map_err(|e| format!("Failed to get auth ticket: {e}"))?,
+                        ),
+                        _ => AccessMethod::SessionToken {
+                            variant: config.variant.to_string(),
+                            token: tokens.access_token,
+                        },
                     };
                     Ok(params)
                 }
