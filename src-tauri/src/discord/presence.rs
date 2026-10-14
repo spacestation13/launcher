@@ -175,31 +175,6 @@ impl DiscordState {
                         });
                     }
 
-                    #[cfg(feature = "discord_invites")]
-                    {
-                        use discord_sdk::activity::Secrets;
-                        use serde_json::json;
-
-                        activity = activity
-                            .party(
-                                server_name,
-                                std::num::NonZeroU32::new(*player_count),
-                                std::num::NonZeroU32::new(300),
-                                discord_sdk::activity::PartyPrivacy::Public,
-                            )
-                            .secrets(Secrets {
-                                r#match: None,
-                                join: Some(
-                                    json!({"server_name": &server_name, "type": "join"})
-                                        .to_string(),
-                                ),
-                                spectate: Some(
-                                    json!({"server_name": &server_name, "type": "spectate"})
-                                        .to_string(),
-                                ),
-                            });
-                    }
-
                     discord.update_activity(activity).await
                 }
                 PresenceState::Disconnected => discord.clear_activity().await,

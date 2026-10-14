@@ -49,17 +49,42 @@ export function useDeepLink() {
   useEffect(() => {
     let unlistenDeepLink: (() => void) | undefined;
     let unlistenSingleInstance: (() => void) | undefined;
+    let unlistenSteamJoin: (() => void) | undefined;
+    let unsubscribePending: (() => void) | undefined;
+
+    const connectToServerId = (id: string, source: string) => {
+      unsubscribePending?.();
+      unsubscribePending = undefined;
+
+      const { servers, loading } = useServerStore.getState();
+      if (servers.some((s) => s.id === id)) {
+        connectRef.current(id, source);
+        return;
+      }
+      if (!loading) {
+        console.warn(`Join target ${id} from ${source} is not in the server list`);
+        return;
+      }
+
+      // Joins from a cold start arrive before the first server list fetch, so wait for it
+      // rather than dropping the join.
+      unsubscribePending = useServerStore.subscribe((state) => {
+        if (state.loading) return;
+        unsubscribePending?.();
+        unsubscribePending = undefined;
+        if (state.servers.some((s) => s.id === id)) {
+          connectRef.current(id, source);
+        } else {
+          console.warn(`Join target ${id} from ${source} is not in the server list`);
+        }
+      });
+    };
 
     const dispatchTarget = (target: ConnectTarget, source: string) => {
       if (target.kind === "address") {
         connectToAddressRef.current(target.address, source);
       } else {
-        const server = useServerStore
-          .getState()
-          .servers.find((s) => s.id === target.id);
-        if (server) {
-          connectRef.current(server.id, source);
-        }
+        connectToServerId(target.id, source);
       }
     };
 
@@ -92,6 +117,12 @@ export function useDeepLink() {
       unlistenSingleInstance = await listen<string[]>("deep-link://new-url", (event) =>
         handleUrls(event.payload),
       );
+      unlistenSteamJoin = await listen<string>("steam-join-requested", (event) => {
+        const target = parseConnectTarget(event.payload);
+        if (target) {
+          dispatchTarget(target, "steam-join");
+        }
+      });
     };
 
     setup();
@@ -99,6 +130,8 @@ export function useDeepLink() {
     return () => {
       unlistenDeepLink?.();
       unlistenSingleInstance?.();
+      unlistenSteamJoin?.();
+      unsubscribePending?.();
     };
   }, []);
 }

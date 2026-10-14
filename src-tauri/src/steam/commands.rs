@@ -6,7 +6,7 @@ use tauri::State;
 use crate::error::{CommandError, CommandResult};
 use crate::steam::get_steam_app_name;
 
-use super::SteamState;
+use super::{parse_connect_target, SteamState};
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SteamUserInfo {
@@ -171,16 +171,6 @@ pub async fn steam_authenticate(
         preferred_username,
     )
     .await
-}
-
-fn parse_connect_target(command_line: &str) -> Option<String> {
-    let trimmed = command_line.trim();
-    let target = trimmed.strip_prefix("+connect ")?;
-    let target = target.trim();
-    if target.is_empty() {
-        return None;
-    }
-    Some(target.to_string())
 }
 
 #[tauri::command]

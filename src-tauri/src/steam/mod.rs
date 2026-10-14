@@ -28,3 +28,13 @@ pub fn get_steam_app_name() -> String {
         DEFAULT_STEAM_NAME.to_string()
     }
 }
+
+pub(crate) fn parse_connect_target(command_line: &str) -> Option<String> {
+    let trimmed = command_line.trim();
+    let target = trimmed.strip_prefix("+connect ")?;
+    let target = target.trim();
+    if target.is_empty() {
+        return None;
+    }
+    Some(target.to_string())
+}

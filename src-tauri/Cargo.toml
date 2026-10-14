@@ -10,7 +10,6 @@ edition = "2021"
 [features]
 default = []
 dev = []
-discord_invites = []
 steam = ["steamworks", "ss13relay-proto"]
 cm_ss13 = [] # CM-SS13 specific variant
 hwid = ["launcher-hwid"]

@@ -484,6 +484,11 @@ pub fn run() {
                 }
             }
 
+            #[cfg(feature = "steam")]
+            if let Some(steam_state) = app.try_state::<std::sync::Arc<steam::SteamState>>() {
+                steam_state.register_join_callbacks(handle.clone());
+            }
+
             presence::start_presence_background_task(
                 std::sync::Arc::clone(&presence_manager),
                 steam_poll_callback,

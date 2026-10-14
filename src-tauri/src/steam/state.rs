@@ -2,8 +2,17 @@
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use steamworks::{AuthTicket, Client, TicketForWebApiResponse};
+use steamworks::{
+    AuthTicket, Client, GameRichPresenceJoinRequested, NewUrlLaunchParameters,
+    TicketForWebApiResponse,
+};
+use tauri::Emitter;
 use tokio::sync::oneshot;
+
+use super::parse_connect_target;
+
+/// Emitted with a connect target when Steam asks a running launcher to join a server
+pub const STEAM_JOIN_EVENT: &str = "steam-join-requested";
 
 /// Manages Steam client state and authentication
 pub struct SteamState {
@@ -13,6 +22,7 @@ pub struct SteamState {
     pending_ticket_tx: Arc<Mutex<Option<oneshot::Sender<TicketForWebApiResponse>>>>,
     /// Callback handles kept alive for the lifetime of `SteamState`
     _callback_handle: steamworks::CallbackHandle,
+    join_callback_handles: Mutex<Vec<steamworks::CallbackHandle>>,
 }
 
 impl SteamState {
@@ -43,6 +53,7 @@ impl SteamState {
             active_ticket: Arc::new(Mutex::new(None)),
             pending_ticket_tx,
             _callback_handle: callback_handle,
+            join_callback_handles: Mutex::new(Vec::new()),
         })
     }
 
@@ -117,7 +128,41 @@ impl SteamState {
         self.client.apps().launch_command_line()
     }
 
+    /// for handling post-start join requests, passed through as GameRichPresenceJoinRequested or NewUrlLaunchParameters
+    pub fn register_join_callbacks(&self, app: tauri::AppHandle) {
+        let join_app = app.clone();
+        let join_handle =
+            self.client
+                .register_callback(move |request: GameRichPresenceJoinRequested| {
+                    tracing::info!("Steam join requested: {:?}", request.connect);
+                    emit_join_target(&join_app, &request.connect);
+                });
+
+        let client = self.client.clone();
+        let url_handle = self
+            .client
+            .register_callback(move |_: NewUrlLaunchParameters| {
+                let command_line = client.apps().launch_command_line();
+                tracing::info!("Steam sent new launch parameters: {:?}", command_line);
+                emit_join_target(&app, &command_line);
+            });
+
+        let mut handles = self.join_callback_handles.lock().unwrap();
+        handles.push(join_handle);
+        handles.push(url_handle);
+    }
+
     pub fn run_callbacks(&self) {
         self.client.run_callbacks();
+    }
+}
+
+fn emit_join_target(app: &tauri::AppHandle, command_line: &str) {
+    let Some(target) = parse_connect_target(command_line) else {
+        tracing::warn!("Ignoring Steam join without a +connect target: {command_line:?}");
+        return;
+    };
+    if let Err(e) = app.emit(STEAM_JOIN_EVENT, target) {
+        tracing::warn!("Failed to emit Steam join request: {e}");
     }
 }
