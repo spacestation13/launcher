@@ -48,6 +48,12 @@ runs:
           mv "$dir" "$suffix"
         done
 
+    - name: Extract Linux build
+      shell: bash
+      run: |
+        tar -C build/linux -xf build/linux/linux.tar
+        rm build/linux/linux.tar
+
     - name: Get version from Cargo.toml
       id: version
       shell: bash

@@ -204,12 +204,14 @@ jobs:
           cp scripts/steam-launch.sh steam-build/linux/launch.sh
           chmod +x steam-build/linux/launch.sh
 
+          tar -C steam-build/linux -cf steam-build/linux.tar .
+
       - name: Upload Linux build
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
           name: build-steam-${{ matrix.variant }}-linux
-          path: steam-build/linux/
+          path: steam-build/linux.tar
           retention-days: 1
 
       - name: Upload Linux WebView2 runtime

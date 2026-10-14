@@ -15,6 +15,19 @@ fi
 # Read the random path mapping string from the hook and create APPDIR/tmp symlink
 # (quick-sharun.sh patches /usr/lib to /tmp/{random}, but Tauri resolves it as $APPDIR/tmp/{random})
 if [ -f "$SCRIPT_DIR/bin/01-path-mapping-hardcoded.hook" ]; then
+    for _dir in bin lib share; do
+        _name=$(grep "^_tmp_${_dir}=" "$SCRIPT_DIR/bin/01-path-mapping-hardcoded.hook" | cut -d'=' -f2- | tr -d '"')
+        if [ -n "$_name" ]; then
+            ln -sfn "$SCRIPT_DIR/$_dir" "/tmp/$_name" 2>/dev/null || true
+            if [ ! -L "/tmp/$_name" ] || [ ! -O "/tmp/$_name" ] \
+                || [ "$(readlink "/tmp/$_name")" != "$SCRIPT_DIR/$_dir" ]; then
+                echo "Error: /tmp/$_name is not a symlink to $SCRIPT_DIR/$_dir owned by you, refusing to launch." >&2
+                echo "Remove it (or ask its owner to) and try again." >&2
+                exit 1
+            fi
+        fi
+    done
+
     _tmp_lib=$(grep '_tmp_lib=' "$SCRIPT_DIR/bin/01-path-mapping-hardcoded.hook" | cut -d'=' -f2 | tr -d '"')
     if [ -n "$_tmp_lib" ]; then
         mkdir -p "$SCRIPT_DIR/tmp"
