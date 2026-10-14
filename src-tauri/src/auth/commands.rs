@@ -395,11 +395,15 @@ pub async fn hub_steam_login(
         }))
         .send()
         .await
-        .map_err(|e| CommandError::Network(format!("Failed to contact auth server: {e}")))?;
+        .map_err(|e| {
+            tracing::error!("Hub Steam login request failed: {e:?}");
+            CommandError::Network(format!("Failed to contact auth server: {e}"))
+        })?;
 
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
+        tracing::error!("Hub Steam login returned {status}: {body}");
         steam_state.cancel_auth_ticket();
         return Err(CommandError::Network(format!(
             "Auth server error ({status}): {body}"
@@ -409,7 +413,10 @@ pub async fn hub_steam_login(
     let body: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| CommandError::Network(format!("Failed to parse response: {e}")))?;
+        .map_err(|e| {
+            tracing::error!("Failed to parse hub Steam login response: {e:?}");
+            CommandError::Network(format!("Failed to parse response: {e}"))
+        })?;
 
     if body["requires_tos"].as_bool() == Some(true) {
         steam_state.cancel_auth_ticket();
@@ -423,6 +430,7 @@ pub async fn hub_steam_login(
         let error = body["error"]
             .as_str()
             .unwrap_or("Steam authentication failed");
+        tracing::error!("Hub Steam login rejected: {error}");
         return Err(CommandError::Network(error.to_string()));
     }
 
