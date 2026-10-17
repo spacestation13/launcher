@@ -272,5 +272,28 @@
   },
   "titlebar": {
     "defaultTitle": "SS13 Launcher"
+  },
+  "regions": {
+    "africa_central": "Central Africa",
+    "africa_north": "North Africa",
+    "africa_south": "Southern Africa",
+    "antarctica": "Antarctica",
+    "asia_east": "East Asia",
+    "asia_north": "North Asia",
+    "asia_southeast": "Southeast Asia",
+    "central_america": "Central America",
+    "europe_east": "Eastern Europe",
+    "europe_west": "Western Europe",
+    "greenland": "Greenland",
+    "india": "India",
+    "middle_east": "Middle East",
+    "moon": "The Moon",
+    "north_america_central": "North America (Central)",
+    "north_america_east": "North America (East)",
+    "north_america_west": "North America (West)",
+    "oceania": "Oceania",
+    "south_america_east": "South America (East)",
+    "south_america_south": "South America (South)",
+    "south_america_west": "South America (West)"
   }
 }

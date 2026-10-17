@@ -8,6 +8,7 @@ import { useConnect, useError } from "../hooks";
 import { formatCommandError } from "../lib/formatCommandError";
 import { useSettingsStore } from "../stores";
 import { useUiStateStore } from "../stores/uiStateStore";
+import { formatRegion } from "../utils";
 import { Modal } from "./Modal";
 
 function TrustInfo({ connectInfo }: { connectInfo: DirectConnectInfo }) {
@@ -94,12 +95,17 @@ function ServerPreview({ connectInfo }: { connectInfo: DirectConnectInfo }) {
           {(connectInfo.map_name || connectInfo.server_description) && (
             <div className="server-details">
               <div className="detail-line">
-                {[connectInfo.map_name, connectInfo.server_region].filter(Boolean).map((part, i) => (
-                  <span key={String(part)}>
-                    {i > 0 && " · "}
-                    {part}
-                  </span>
-                ))}
+                {[
+                  connectInfo.map_name,
+                  connectInfo.server_region && formatRegion(connectInfo.server_region),
+                ]
+                  .filter(Boolean)
+                  .map((part, i) => (
+                    <span key={String(part)}>
+                      {i > 0 && " · "}
+                      {part}
+                    </span>
+                  ))}
               </div>
             </div>
           )}

@@ -1,1 +1,1 @@
-export { formatDuration } from "./format";
+export { formatDuration, formatRegion } from "./format";

@@ -16,6 +16,7 @@ function getLanguageDisplayName(code: string): string {
   return code;
 }
 import { useUiStateStore } from "../stores/uiStateStore";
+import { formatRegion } from "../utils";
 import { AgeVerificationModal } from "./AgeVerificationModal";
 
 type FilterState = ReturnType<typeof useServerFilters>;
@@ -243,7 +244,7 @@ export const ServerFilterPanel = ({
                                     checked={selectedRegions.has(region)}
                                     onChange={(e) => toggleRegion(region, e.target.checked)}
                                   />
-                                  <span>{region}</span>
+                                  <span>{formatRegion(region).toLowerCase()}</span>
                                 </label>
                               ))}
                             </div>

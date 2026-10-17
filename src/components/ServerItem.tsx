@@ -13,6 +13,7 @@ import {
   faCircleCheck,
   faComments,
   faGlobe,
+  faLocationDot,
   faLock,
   faShield,
   faSignal,
@@ -29,7 +30,7 @@ import type { Server } from "../bindings";
 import { useConnect, useError } from "../hooks";
 import { useConfigStore, useServerStore, useSettingsStore } from "../stores";
 import { useUiStateStore } from "../stores/uiStateStore";
-import { formatDuration } from "../utils";
+import { formatDuration, formatRegion } from "../utils";
 import { Modal, ModalContent } from "./Modal";
 import { TermsOfServiceModal } from "./TermsOfServiceModal";
 import { WhitelistRequiredModal } from "./WhitelistRequired";
@@ -237,6 +238,12 @@ export const ServerItem = ({
                   {!data && server.language && (
                     <span className="badge badge-tag">{server.language}</span>
                   )}
+                  {!data && server.region && (
+                    <span className="badge badge-tag">
+                      <FontAwesomeIcon icon={faLocationDot} />{" "}
+                      {formatRegion(server.region).toLowerCase()}
+                    </span>
+                  )}
                 </div>
                 {data ? (
                   <div className="server-details">
@@ -265,6 +272,8 @@ export const ServerItem = ({
                     {(server.verified_domain ||
                       server.whitelisted ||
                       server.is_18_plus ||
+                      server.language ||
+                      server.region ||
                       (server.tags && server.tags.length > 0)) && (
                       <div className="server-tags">
                         {server.verified_domain && (
@@ -297,6 +306,12 @@ export const ServerItem = ({
                           ))}
                         {server.language && (
                           <span className="badge badge-tag">{server.language}</span>
+                        )}
+                        {server.region && (
+                          <span className="badge badge-tag">
+                            <FontAwesomeIcon icon={faLocationDot} />{" "}
+                            {formatRegion(server.region).toLowerCase()}
+                          </span>
                         )}
                       </div>
                     )}
