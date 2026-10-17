@@ -410,13 +410,10 @@ pub async fn hub_steam_login(
         )));
     }
 
-    let body: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to parse hub Steam login response: {e:?}");
-            CommandError::Network(format!("Failed to parse response: {e}"))
-        })?;
+    let body: serde_json::Value = response.json().await.map_err(|e| {
+        tracing::error!("Failed to parse hub Steam login response: {e:?}");
+        CommandError::Network(format!("Failed to parse response: {e}"))
+    })?;
 
     if body["requires_tos"].as_bool() == Some(true) {
         steam_state.cancel_auth_ticket();

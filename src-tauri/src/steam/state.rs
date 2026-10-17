@@ -68,6 +68,12 @@ impl SteamState {
     pub async fn get_auth_session_ticket(&self) -> crate::error::CommandResult<Vec<u8>> {
         use crate::error::CommandError;
 
+        if !self.client.user().logged_on() {
+            return Err(CommandError::Network(
+                "Steam is offline or not signed in".to_string(),
+            ));
+        }
+
         {
             let mut active = self.active_ticket.lock().unwrap();
             *active = None;
